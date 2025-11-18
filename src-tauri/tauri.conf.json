@@ -1,0 +1,33 @@
+{
+  "package": {
+    "productName": "CodexLotus",
+    "version": "0.1.0"
+  },
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devPath": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build"
+  },
+  "tauri": {
+    "windows": [
+      {
+        "title": "CodexLotus",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 600,
+        "fullscreen": false,
+        "resizable": true
+      }
+    ],
+    "bundle": {
+      "identifier": "com.quantumlotus.codexlotus",
+      "active": true,
+      "targets": ["nsis"],
+      "icon": ["icons/icon.ico"]
+    },
+    "security": {
+      "csp": null
+    }
+  }
+}
