@@ -61,6 +61,10 @@ impl EmbeddingDb {
     )?;
     tx.execute("DELETE FROM files WHERE project_root = ?1", params![project_root])?;
 
+    // Reset any existing VSS index if present. This is best-effort and will
+    // be ignored if the sqlite-vss virtual table is not available.
+    let _ = tx.execute("DELETE FROM vss_chunks", []);
+
     for (chunk_index, input) in inputs.iter().enumerate() {
       let file_id = insert_file(&tx, project_root, &input.relative_path)?;
 
@@ -75,6 +79,16 @@ impl EmbeddingDb {
         "INSERT INTO embeddings (chunk_id, vector_json) VALUES (?1, ?2)",
         params![chunk_id, vector_json],
       )?;
+
+      // Best-effort: hydrate the VSS virtual table so that when sqlite-vss is
+      // available we can issue fast similarity queries. The embedding is packed
+      // into a BLOB of little-endian f32 values, which matches sqlite-vss's
+      // expected layout.
+      let blob = f32s_to_le_blob(&input.embedding);
+      let _ = tx.execute(
+        "INSERT OR REPLACE INTO vss_chunks(rowid, embedding) VALUES (?1, ?2)",
+        params![chunk_id, blob],
+      );
     }
 
     tx.commit()?;
@@ -147,6 +161,14 @@ fn insert_file(tx: &rusqlite::Transaction<'_>, project_root: &str, relative_path
     params![project_root, relative_path],
   )?;
   Ok(tx.last_insert_rowid())
+}
+
+fn f32s_to_le_blob(vec: &[f32]) -> Vec<u8> {
+  let mut bytes = Vec::with_capacity(vec.len() * 4);
+  for f in vec {
+    bytes.extend_from_slice(&f.to_le_bytes());
+  }
+  bytes
 }
 
 fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {

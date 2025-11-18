@@ -35,5 +35,16 @@ pub fn run_migrations(conn: &mut Connection) -> Result<()> {
     "#,
   )?;
 
+  // Best-effort sqlite-vss integration: attempt to create a VSS virtual table
+  // for chunk embeddings. If the sqlite-vss extension is not yet loaded, this
+  // will fail at runtime; we intentionally ignore that error so the rest of
+  // the database remains usable.
+  if let Err(err) = conn.execute(
+    "CREATE VIRTUAL TABLE IF NOT EXISTS vss_chunks USING vss0(embedding(3072));",
+    [],
+  ) {
+    eprintln!("sqlite-vss not available yet: {err}");
+  }
+
   Ok(())
 }
