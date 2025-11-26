@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { workspaceAtoms } from "./workspaceAtoms";
 
 export interface ProjectFileEntry {
   path: string;
@@ -11,19 +12,31 @@ export const projectRootAtom = atom<string | null>(null);
 export const projectFilesAtom = atom<ProjectFileEntry[]>([]);
 
 // Currently active file in the editor workspace.
-export const activeFilePathAtom = atom<string | null>(null);
+// Derived from workspace atoms to keep single source of truth.
+export const activeFilePathAtom = atom((get) => {
+  const { tabs, activeTabId } = get(workspaceAtoms.baseStateAtom);
+  const activeTab = tabs.find(t => t.id === activeTabId);
+  if (activeTab && activeTab.type === "editor") {
+    return activeTab.path || null;
+  }
+  return null;
+});
 
 // Logical "file tabs" within the editor workspace (by path).
-export const fileTabsAtom = atom<string[]>([]);
+// Derived from workspace atoms.
+export const fileTabsAtom = atom((get) => {
+    const { tabs } = get(workspaceAtoms.baseStateAtom);
+    return tabs
+        .filter(t => t.type === "editor" && t.path)
+        .map(t => t.path as string);
+});
 
 export const activeFileTabAtom = atom(
   (get) => get(activeFilePathAtom),
   (get, set, nextPath: string | null) => {
-    const currentTabs = get(fileTabsAtom);
-    if (nextPath && !currentTabs.includes(nextPath)) {
-      set(fileTabsAtom, [...currentTabs, nextPath]);
+    if (nextPath) {
+      set(workspaceAtoms.openFileTabAtom, nextPath);
     }
-    set(activeFilePathAtom, nextPath);
   }
 );
 

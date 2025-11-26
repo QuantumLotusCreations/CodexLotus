@@ -22,6 +22,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ value, onChange 
         lineHeight: 20,
         renderWhitespace: "selection",
         scrollBeyondLastLine: false,
+        wordWrap: "on", // Enable word wrap
       }}
       loading={<div>Loading editor…</div>}
     />

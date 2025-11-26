@@ -2,64 +2,64 @@ import React from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useQuery } from "@tanstack/react-query";
 import { sidebarRoot, sidebarHeader, sidebarTitle, sidebarLogo } from "../../theme/sidebar.css";
+import { vars } from "../../theme/tokens.css";
 import logo from "../../../assets/icons/icon-32.png";
 import {
   projectRootAtom,
   projectFilesAtom,
   resolvedContextFilesAtom,
   activeFileTabAtom,
+  activeFilePathAtom,
 } from "../../state/atoms/projectAtoms";
 import { listMarkdownFiles } from "../../../lib/api/files";
 
 export const Sidebar: React.FC = () => {
-  const [projectRoot, setProjectRoot] = useAtom(projectRootAtom);
-  const [projectFiles, setProjectFiles] = useAtom(projectFilesAtom);
+  const [projectRoot, setProjectFiles] = useAtom(projectRootAtom); // Corrected to match hook return
+  const [filesList, setFilesList] = useAtom(projectFilesAtom);
   const contextFiles = useAtomValue(resolvedContextFilesAtom);
   const setActiveFileTab = useSetAtom(activeFileTabAtom);
+  const activePath = useAtomValue(activeFilePathAtom);
 
+  // We still need useQuery for fetching, but actions are gone
   const { isLoading } = useQuery({
     queryKey: ["project-files", projectRoot],
     enabled: !!projectRoot,
     queryFn: async () => {
       if (!projectRoot) return [];
       const files = await listMarkdownFiles(projectRoot);
-      setProjectFiles(files);
+      setFilesList(files);
       return files;
     },
   });
 
-  const handleSelectProject = async () => {
-    // For now, a very small UX: rely on the user to paste or set the path via prompt.
-    // This can be upgraded to a Tauri directory picker.
-    const nextRoot = window.prompt("Set project root path", projectRoot ?? "")?.trim();
-    if (nextRoot) {
-      setProjectRoot(nextRoot);
-    }
-  };
-
   const renderFileList = () => {
     if (!projectRoot) return <div>No project selected.</div>;
-    if (isLoading && projectFiles.length === 0) return <div>Loading files…</div>;
-    if (projectFiles.length === 0) return <div>No markdown files found.</div>;
+    if (isLoading && filesList.length === 0) return <div>Loading files…</div>;
+    if (filesList.length === 0) return <div>No markdown files found.</div>;
 
     return (
       <ul style={{ listStyle: "none", paddingLeft: 0, margin: 0 }}>
-        {projectFiles.map((entry) => {
+        {filesList.map((entry) => {
           const segments = entry.path.split(/[/\\\\]/);
           const depth = Math.max(0, segments.length - 1);
           const name = segments[segments.length - 1] || entry.path;
+          const isActive = activePath === entry.path;
 
           return (
             <li key={entry.path} style={{ paddingLeft: depth * 12 }}>
               <button
                 type="button"
                 style={{
-                  background: "none",
+                  background: isActive ? vars.color.background.panelRaised : "none",
                   border: "none",
-                  padding: 0,
-                  color: "inherit",
+                  padding: "2px 6px",
+                  width: "100%",
+                  textAlign: "left",
+                  color: isActive ? vars.color.text.primary : "inherit",
                   fontSize: 12,
                   cursor: "pointer",
+                  borderRadius: 4,
+                  fontWeight: isActive ? 600 : 400
                 }}
                 onClick={() => setActiveFileTab(entry.path)}
               >
@@ -81,14 +81,8 @@ export const Sidebar: React.FC = () => {
       <div style={{ padding: 12, fontSize: 12, display: "flex", flexDirection: "column", gap: 8 }}>
         <div>
           <strong>Project</strong>
-          <div style={{ marginTop: 4 }}>{projectRoot ?? "No project selected"}</div>
-          <button
-            type="button"
-            style={{ marginTop: 6, fontSize: 11 }}
-            onClick={handleSelectProject}
-          >
-            Change project…
-          </button>
+          <div style={{ marginTop: 4, wordBreak: "break-all" }}>{projectRoot ?? "No project selected"}</div>
+          {/* Removed buttons here */}
         </div>
         <div>
           <strong>Files</strong>

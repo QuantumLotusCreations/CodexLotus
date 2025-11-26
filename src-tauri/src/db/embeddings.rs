@@ -146,6 +146,17 @@ impl EmbeddingDb {
 
     Ok(scored)
   }
+
+  pub fn get_chunk_count(&self, project_root: &str) -> Result<usize> {
+    let mut stmt = self.conn.prepare(
+      "SELECT COUNT(*)\
+       FROM files f\
+       JOIN chunks c ON c.file_id = f.id\
+       WHERE f.project_root = ?1",
+    )?;
+    let count: i64 = stmt.query_row(params![project_root], |row| row.get(0))?;
+    Ok(count as usize)
+  }
 }
 
 fn database_path_for_project(project_root: &str) -> PathBuf {
