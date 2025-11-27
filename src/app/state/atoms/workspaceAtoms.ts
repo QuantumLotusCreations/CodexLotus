@@ -101,11 +101,33 @@ const openSettingsTabAtom = atom(null, (get, set) => {
     }
 });
 
+const openToolTabAtom = atom(null, (get, set, toolId: string, title: string) => {
+    const state = get(baseStateAtom);
+    const tabId = `tool-${toolId}`;
+    const existingTab = state.tabs.find((t) => t.id === tabId);
+
+    if (existingTab) {
+        set(setActiveTabAtom, existingTab.id);
+    } else {
+        const newTab: WorkspaceTab = {
+            id: tabId,
+            type: "tool",
+            title: title,
+            payload: { toolId }
+        };
+        set(baseStateAtom, {
+            tabs: [...state.tabs, newTab],
+            activeTabId: newTab.id
+        });
+    }
+});
+
 export const workspaceAtoms = {
   baseStateAtom,
   viewModelAtom,
   setActiveTabAtom,
   closeTabAtom,
   openFileTabAtom,
-  openSettingsTabAtom
+  openSettingsTabAtom,
+  openToolTabAtom,
 };

@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use crate::ai::llm_client::LlmClient;
-use crate::ai::openai_client::OpenAiClient;
 use crate::db::embeddings::{EmbeddingDb, FileChunkInput};
 use crate::util::error::Result;
 
@@ -20,7 +19,7 @@ fn is_markdown(path: &Path) -> bool {
 ///
 /// For now, each file becomes a single chunk. Later this can be extended to
 /// paragraph- or section-level chunking.
-pub async fn index_project(project_root: &str, client: &OpenAiClient) -> Result<()> {
+pub async fn index_project(project_root: &str, client: &(dyn LlmClient + Send + Sync)) -> Result<()> {
   let root = PathBuf::from(project_root);
   let mut files: Vec<(String, String)> = Vec::new();
 

@@ -11,6 +11,8 @@ import { appShell } from "./theme/appShell.css";
 import { ChatPanel } from "./features/chat/ChatPanel";
 import { SettingsTab } from "./features/settings/SettingsTab";
 import { EditorWorkspace } from "./features/editor/EditorWorkspace";
+import { DiceProbabilityTab } from "./features/diceTools/DiceProbabilityTab";
+import { StatBlockDesignerTab } from "./features/statBlocks/StatBlockDesignerTab";
 import { getIndexStats, initializeProjectIndex } from "../lib/api/rag";
 import { call } from "../lib/api/client";
 
@@ -20,6 +22,10 @@ function getComponentForTab(tab: WorkspaceTab): React.ComponentType | null {
       return EditorWorkspace;
     case "settings":
       return SettingsTab;
+    case "tool":
+      if (tab.payload?.toolId === "dice-calculator") return DiceProbabilityTab;
+      if (tab.payload?.toolId === "stat-block-designer") return StatBlockDesignerTab;
+      return null;
     default:
       return null;
   }

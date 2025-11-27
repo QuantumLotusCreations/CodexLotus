@@ -24,7 +24,7 @@ pub struct SaveKeyRequest {
   pub api_key: String,
 }
 
-fn get_settings_path(handle: &tauri::AppHandle) -> Option<PathBuf> {
+fn get_settings_path(_handle: &tauri::AppHandle) -> Option<PathBuf> {
   let mut path = app_data_dir(&tauri::Config::default())?;
   path.push("com.codexlotus.dev");
   if !path.exists() {

@@ -56,15 +56,82 @@ struct GeminiGenerateResponse {
     candidates: Option<Vec<GeminiCandidate>>,
 }
 
+// Embeddings
+#[derive(Serialize)]
+struct GeminiEmbedRequest {
+    content: GeminiContent,
+    model: String,
+}
+
+#[derive(Serialize)]
+struct GeminiBatchEmbedRequest {
+    requests: Vec<GeminiEmbedRequest>,
+}
+
+#[derive(Deserialize)]
+struct GeminiEmbeddingValues {
+    values: Vec<f32>,
+}
+
+#[derive(Deserialize)]
+struct GeminiEmbedResponse {
+    embedding: Option<GeminiEmbeddingValues>,
+}
+
+#[derive(Deserialize)]
+struct GeminiBatchEmbedResponse {
+    embeddings: Option<Vec<GeminiEmbedResponse>>,
+}
+
+
 #[async_trait]
 impl LlmClient for GeminiClient {
-  async fn embed(&self, _texts: &[String]) -> anyhow::Result<Vec<Vec<f32>>> {
-    // Gemini embedding API support is slightly different; for now we can rely on OpenAI for embeddings
-    // or implement Gemini's embedding-001 model if strictly needed.
-    // Given the user request was for Gemini *Models* (likely for generation), we will focus on chat first.
-    // For the RAG pipeline to work, we either need to swap the embedding provider globally or keep using OpenAI for embeddings.
-    // Let's keep embeddings not implemented for now to avoid breaking the existing flow if mixed usage is intended.
-    anyhow::bail!("Gemini embeddings not yet implemented");
+  async fn embed(&self, texts: &[String]) -> anyhow::Result<Vec<Vec<f32>>> {
+    // Gemini uses a specific model for embeddings, usually "embedding-001" or "text-embedding-004"
+    // We will use "text-embedding-004" as a safe default or "embedding-001".
+    let embedding_model = "text-embedding-004";
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/{}:batchEmbedContents?key={}",
+        embedding_model, self.api_key
+    );
+
+    // Prepare batch request
+    let requests: Vec<GeminiEmbedRequest> = texts.iter().map(|t| {
+        GeminiEmbedRequest {
+            model: format!("models/{}", embedding_model),
+            content: GeminiContent {
+                role: "user".to_string(),
+                parts: vec![GeminiContentPart { text: t.clone() }]
+            }
+        }
+    }).collect();
+
+    let body = GeminiBatchEmbedRequest { requests };
+
+    let resp: GeminiBatchEmbedResponse = self
+      .http
+      .post(&url)
+      .json(&body)
+      .send()
+      .await?
+      .error_for_status()?
+      .json()
+      .await?;
+
+    let mut results = Vec::new();
+    if let Some(embeddings) = resp.embeddings {
+        for e in embeddings {
+            if let Some(vals) = e.embedding {
+                results.push(vals.values);
+            } else {
+                // If one fails, we push an empty vec or handle error? 
+                // Let's push empty to maintain index alignment
+                results.push(Vec::new());
+            }
+        }
+    }
+
+    Ok(results)
   }
 
   async fn chat_completion(&self, prompt: &str) -> anyhow::Result<String> {
@@ -104,4 +171,3 @@ impl LlmClient for GeminiClient {
     Ok(content)
   }
 }
-

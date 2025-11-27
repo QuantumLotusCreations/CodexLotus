@@ -11,6 +11,7 @@ import {
 
 export const TitleBar: React.FC = () => {
   const openSettings = useSetAtom(workspaceAtoms.openSettingsTabAtom);
+  const openTool = useSetAtom(workspaceAtoms.openToolTabAtom);
   const projectRoot = useAtomValue(projectRootAtom);
   const { handleSelectProject, handleCreateProject, handleImportFiles } = useProjectActions();
 
@@ -67,6 +68,22 @@ export const TitleBar: React.FC = () => {
 
         <div className={menuItem} onClick={() => alert("Edit menu not implemented yet.")}>Edit</div>
         <div className={menuItem} onClick={() => alert("View menu not implemented yet.")}>View</div>
+        
+        {/* Tools Menu */}
+        <div style={{ position: "relative" }}>
+            <div className={menuItem} onClick={() => toggleMenu("tools")}>Tools</div>
+            {activeMenu === "tools" && (
+                <div className={menuDropdown}>
+                    <div className={menuDropdownItem} onClick={() => { closeMenu(); openTool("dice-calculator", "Dice Calculator"); }}>
+                        Dice Probability Calculator
+                    </div>
+                    <div className={menuDropdownItem} onClick={() => { closeMenu(); openTool("stat-block-designer", "Stat Block Designer"); }}>
+                        Stat Block Designer
+                    </div>
+                </div>
+            )}
+        </div>
+
         <div className={menuItem} onClick={() => alert("Help menu not implemented yet.")}>Help</div>
       </div>
 

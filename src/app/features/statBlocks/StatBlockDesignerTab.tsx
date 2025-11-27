@@ -48,6 +48,7 @@ const DEFAULT_BLOCK: StatBlock = {
 export const StatBlockDesignerTab: React.FC = () => {
   const [block, setBlock] = useState<StatBlock>(DEFAULT_BLOCK);
   const [markdown, setMarkdown] = useState("");
+  const [showPreview, setShowPreview] = useState(false); // Disabled by default to prevent crash
 
   useEffect(() => {
     // Generate YAML-like markdown block
@@ -72,10 +73,10 @@ export const StatBlockDesignerTab: React.FC = () => {
       `senses: ${block.senses}`,
       `languages: ${block.languages}`,
       `cr: ${block.cr}`,
-      block.traits.length > 0 ? "traits:" : null,
-      ...block.traits.map(t => `  - name: ${t.name}\n    desc: ${t.desc}`),
-      block.actions.length > 0 ? "actions:" : null,
-      ...block.actions.map(a => `  - name: ${a.name}\n    desc: ${a.desc}`),
+      block.traits && block.traits.length > 0 ? "traits:" : null,
+      ...(block.traits || []).map(t => `  - name: ${t.name}\n    desc: ${t.desc}`),
+      block.actions && block.actions.length > 0 ? "actions:" : null,
+      ...(block.actions || []).map(a => `  - name: ${a.name}\n    desc: ${a.desc}`),
       "```"
     ].filter(Boolean).join("\n");
     setMarkdown(yaml);
@@ -259,9 +260,24 @@ export const StatBlockDesignerTab: React.FC = () => {
       {/* Preview */}
       <div style={{ flex: 1, overflowY: "auto", padding: 24, backgroundColor: "#1a1a1a" }}>
           <h3 style={{ color: vars.color.text.secondary, marginTop: 0 }}>Preview</h3>
-          <div style={{ marginBottom: 24 }}>
-              <MarkdownPreview content={markdown} />
+          
+          <div style={{ marginBottom: 12 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input 
+                    type="checkbox" 
+                    checked={showPreview} 
+                    onChange={e => setShowPreview(e.target.checked)}
+                  />
+                  <span style={{ color: vars.color.text.primary, fontWeight: 500 }}>Show Live Preview</span>
+              </label>
+              {!showPreview && <p style={{ fontSize: 12, color: vars.color.text.muted, margin: "4px 0 0 24px" }}>Enable to see the rendered stat block. If app crashes, disable this.</p>}
           </div>
+
+          {showPreview && (
+            <div style={{ marginBottom: 24 }}>
+                <MarkdownPreview content={markdown} />
+            </div>
+          )}
 
           <h3 style={{ color: vars.color.text.secondary }}>Markdown Code</h3>
           <pre style={{ 

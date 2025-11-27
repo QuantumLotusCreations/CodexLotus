@@ -13,7 +13,6 @@ import { vars } from "../../theme/tokens.css.ts";
 
 // --- Dice Logic ---
 
-// Represents a single dice roll combination (e.g. 2d6 + 3)
 interface DiceConfig {
   count: number;
   sides: number;
@@ -22,6 +21,12 @@ interface DiceConfig {
 
 function calculateDistribution(config: DiceConfig) {
   const { count, sides, modifier } = config;
+
+  // Safety check: if inputs are invalid/incomplete, return empty data to avoid crashes
+  if (isNaN(count) || count < 1 || isNaN(sides) || sides < 1 || isNaN(modifier)) {
+      return [];
+  }
+
   // Start with one outcome: 0 with probability 1 (before rolling)
   let outcomes: { [sum: number]: number } = { 0: 1 };
 
@@ -57,7 +62,7 @@ export const DiceProbabilityTab: React.FC = () => {
   const [count, setCount] = useState(2);
   const [sides, setSides] = useState(6);
   const [modifier, setModifier] = useState(0);
-  const [targetNumber, setTargetNumber] = useState<number | "">("");
+  const [targetNumber, setTargetNumber] = useState<number | undefined>(undefined);
 
   const data = useMemo(() => {
     return calculateDistribution({ count, sides, modifier });
@@ -66,7 +71,11 @@ export const DiceProbabilityTab: React.FC = () => {
   const stats = useMemo(() => {
     let expectedValue = 0;
     let successChance = 0;
-    const tn = targetNumber === "" ? null : Number(targetNumber);
+    const tn = targetNumber === undefined ? null : targetNumber;
+
+    if (data.length === 0) {
+        return { expectedValue: 0, successChance: null, min: 0, max: 0 };
+    }
 
     data.forEach((d) => {
       expectedValue += d.value * d.probability;
@@ -82,6 +91,18 @@ export const DiceProbabilityTab: React.FC = () => {
       max: data[data.length - 1]?.value || 0,
     };
   }, [data, targetNumber]);
+
+  // Safe input handler
+  const handleNumberChange = (val: string, setter: (n: number) => void) => {
+      if (val === "") {
+          setter(0); // Default for counts/modifiers if cleared
+          return;
+      }
+      const num = parseInt(val, 10);
+      if (!isNaN(num)) {
+          setter(num);
+      }
+  };
 
   return (
     <div style={{ padding: 24, color: vars.color.text.primary, maxWidth: 800, margin: "0 auto" }}>
@@ -106,7 +127,7 @@ export const DiceProbabilityTab: React.FC = () => {
             min="1"
             max="20"
             value={count}
-            onChange={(e) => setCount(Number(e.target.value))}
+            onChange={(e) => handleNumberChange(e.target.value, setCount)}
             style={{ width: "100%", padding: 6, borderRadius: 4, border: `1px solid ${vars.color.border.subtle}`, backgroundColor: vars.color.background.base, color: vars.color.text.primary }}
           />
         </div>
@@ -131,7 +152,15 @@ export const DiceProbabilityTab: React.FC = () => {
           <input
             type="number"
             value={modifier}
-            onChange={(e) => setModifier(Number(e.target.value))}
+            onChange={(e) => {
+                // Allow negative typing
+                const val = e.target.value;
+                if (val === "") setModifier(0);
+                else {
+                    const num = parseInt(val, 10);
+                    if (!isNaN(num)) setModifier(num);
+                }
+            }}
             style={{ width: "100%", padding: 6, borderRadius: 4, border: `1px solid ${vars.color.border.subtle}`, backgroundColor: vars.color.background.base, color: vars.color.text.primary }}
           />
         </div>
@@ -139,8 +168,18 @@ export const DiceProbabilityTab: React.FC = () => {
              <label style={{ display: "block", marginBottom: 4, fontSize: 12, color: vars.color.text.accent }}>Target Number (DC)</label>
              <input
                 type="number"
-                value={targetNumber}
-                onChange={(e) => setTargetNumber(e.target.value === "" ? "" : Number(e.target.value))}
+                value={targetNumber === undefined ? "" : targetNumber}
+                onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "") {
+                        setTargetNumber(undefined);
+                    } else {
+                        const num = parseInt(val, 10);
+                        if (!isNaN(num)) {
+                            setTargetNumber(num);
+                        }
+                    }
+                }}
                 placeholder="Optional"
                 style={{ width: "100%", padding: 6, borderRadius: 4, border: `1px solid ${vars.color.border.accent}`, backgroundColor: vars.color.background.base, color: vars.color.text.primary }}
              />
@@ -153,19 +192,23 @@ export const DiceProbabilityTab: React.FC = () => {
               <div style={{ fontSize: 12, color: vars.color.text.secondary }}>Expression</div>
               <div style={{ fontSize: 18, fontWeight: "bold" }}>{count}d{sides}{modifier >= 0 ? "+" : ""}{modifier}</div>
           </div>
-          <div>
-              <div style={{ fontSize: 12, color: vars.color.text.secondary }}>Average (Mean)</div>
-              <div style={{ fontSize: 18, fontWeight: "bold" }}>{stats.expectedValue.toFixed(2)}</div>
-          </div>
-          <div>
-              <div style={{ fontSize: 12, color: vars.color.text.secondary }}>Range</div>
-              <div style={{ fontSize: 18, fontWeight: "bold" }}>{stats.min} - {stats.max}</div>
-          </div>
-          {stats.successChance !== null && (
-             <div>
-                <div style={{ fontSize: 12, color: vars.color.text.accent }}>Success Chance (≥{targetNumber})</div>
-                <div style={{ fontSize: 18, fontWeight: "bold", color: vars.color.text.accent }}>{stats.successChance}%</div>
-             </div>
+          {data.length > 0 && (
+            <>
+                <div>
+                    <div style={{ fontSize: 12, color: vars.color.text.secondary }}>Average (Mean)</div>
+                    <div style={{ fontSize: 18, fontWeight: "bold" }}>{stats.expectedValue.toFixed(2)}</div>
+                </div>
+                <div>
+                    <div style={{ fontSize: 12, color: vars.color.text.secondary }}>Range</div>
+                    <div style={{ fontSize: 18, fontWeight: "bold" }}>{stats.min} - {stats.max}</div>
+                </div>
+                {stats.successChance !== null && (
+                    <div>
+                        <div style={{ fontSize: 12, color: vars.color.text.accent }}>Success Chance (≥{targetNumber})</div>
+                        <div style={{ fontSize: 18, fontWeight: "bold", color: vars.color.text.accent }}>{stats.successChance}%</div>
+                    </div>
+                )}
+            </>
           )}
       </div>
 
@@ -190,7 +233,7 @@ export const DiceProbabilityTab: React.FC = () => {
                 formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, "Probability"]}
             />
             <Bar dataKey="probability" fill={vars.color.accent.primary} radius={[4, 4, 0, 0]} />
-            {targetNumber !== "" && (
+            {targetNumber !== undefined && !isNaN(targetNumber) && data.length > 0 && (
                 <ReferenceLine x={Number(targetNumber)} stroke={vars.color.state.success} strokeDasharray="3 3" label={{ value: "DC", fill: vars.color.state.success, position: "top" }} />
             )}
           </BarChart>

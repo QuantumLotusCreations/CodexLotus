@@ -33,6 +33,12 @@ export const vars = createGlobalTheme(":root", {
       strong: "rgba(255,255,255,0.15)",
       accent: "#D6AA3D",
     },
+    state: {
+      success: "#4CC38A",
+      warning: "#F5C96A",
+      danger: "#FF6B6B",
+      info: "#4C9BC3",
+    },
   },
   typography: {
     fontFamily: {

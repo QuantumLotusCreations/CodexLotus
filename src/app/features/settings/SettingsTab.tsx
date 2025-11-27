@@ -229,8 +229,14 @@ export const SettingsTab: React.FC = () => {
                 Current Project: <strong>{projectRoot || "None"}</strong>
             </p>
             <p style={{ marginBottom: 16, fontSize: 14, color: vars.color.text.secondary }}>
-                Indexing allows the AI to search your entire rulebook to answer questions. 
-                It creates a local database of embeddings. This costs OpenAI API credits (currently only OpenAI embeddings supported).
+                Indexing creates a local database of "embeddings" (semantic vectors) for your files. 
+                This allows the AI to search your entire rulebook to answer questions accurately. 
+                <br/><br/>
+                Costs:
+                <ul style={{ paddingLeft: 20, marginTop: 8 }}>
+                    <li><strong>OpenAI:</strong> Costs a small amount of API credits per index.</li>
+                    <li><strong>Google Gemini:</strong> Often free within rate limits (depending on your tier).</li>
+                </ul>
             </p>
             <button
                 onClick={handleIndexProject}
