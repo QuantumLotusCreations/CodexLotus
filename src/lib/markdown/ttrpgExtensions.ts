@@ -27,7 +27,15 @@ interface StatBlock {
   actions?: Array<{ name: string; desc: string }>;
 }
 
-export const ttrpgExtensions: Plugin = () => {
+export interface TtrpgOptions {
+  bgColor?: string;
+  fontColor?: string;
+}
+
+export const ttrpgExtensions: Plugin<[TtrpgOptions?]> = (options = {}) => {
+  const bgColor = options.bgColor || "#fdf1dc";
+  const fontColor = options.fontColor || "#58180D";
+  
   return (tree) => {
     visit(tree, "code", (node: any, index, parent) => {
       if (node.lang === "statblock") {
@@ -38,7 +46,10 @@ export const ttrpgExtensions: Plugin = () => {
           const hast = {
             type: "element",
             tagName: "div",
-            properties: { className: ["c-statblock"] },
+            properties: { 
+              className: ["c-statblock"],
+              style: `background-color: ${bgColor}; color: ${fontColor}; font-family: 'Noto Sans', sans-serif; padding: 16px; border: 1px solid #e0c99a; border-radius: 4px; box-shadow: 0 0 6px rgba(0,0,0,0.5); margin: 24px 0; max-width: 400px; overflow-wrap: break-word; white-space: pre-wrap;`
+            },
             children: [
               // Header
               {
@@ -49,24 +60,30 @@ export const ttrpgExtensions: Plugin = () => {
                   {
                     type: "element",
                     tagName: "h3",
-                    properties: { className: ["c-statblock__name"] },
+                    properties: { 
+                      className: ["c-statblock__name"],
+                      style: `font-family: serif; font-size: 24px; font-weight: bold; margin: 0; color: ${fontColor}; text-transform: uppercase; letter-spacing: 1px;`
+                    },
                     children: [{ type: "text", value: data.name || "Unknown Monster" }]
                   },
                   {
                     type: "element",
                     tagName: "div",
-                    properties: { className: ["c-statblock__meta"] },
+                    properties: { 
+                      className: ["c-statblock__meta"],
+                      style: "font-style: italic; font-size: 12px;"
+                    },
                     children: [{ type: "text", value: `${data.size || "Medium"} ${data.type || "humanoid"}, ${data.alignment || "unaligned"}` }]
                   }
                 ]
               },
               // Divider
-              { type: "element", tagName: "hr", properties: { className: ["c-statblock__divider"] }, children: [] },
+              { type: "element", tagName: "hr", properties: { className: ["c-statblock__divider"], style: `border: 0; height: 2px; background-image: linear-gradient(to right, transparent, ${fontColor}, transparent); margin: 6px 0;` }, children: [] },
               // Core Stats
               {
                 type: "element",
                 tagName: "div",
-                properties: { className: ["c-statblock__attributes"] },
+                properties: { className: ["c-statblock__attributes"], style: `color: ${fontColor}; font-size: 14px; line-height: 1.4;` },
                 children: [
                   createAttribute("Armor Class", data.ac),
                   createAttribute("Hit Points", data.hp),
@@ -74,16 +91,16 @@ export const ttrpgExtensions: Plugin = () => {
                 ]
               },
               // Divider
-              { type: "element", tagName: "hr", properties: { className: ["c-statblock__divider"] }, children: [] },
+              { type: "element", tagName: "hr", properties: { className: ["c-statblock__divider"], style: `border: 0; height: 2px; background-image: linear-gradient(to right, transparent, ${fontColor}, transparent); margin: 6px 0;` }, children: [] },
               // Ability Scores
               data.stats ? createAbilityScores(data.stats) : null,
               // Divider
-              { type: "element", tagName: "hr", properties: { className: ["c-statblock__divider"] }, children: [] },
+              { type: "element", tagName: "hr", properties: { className: ["c-statblock__divider"], style: `border: 0; height: 2px; background-image: linear-gradient(to right, transparent, ${fontColor}, transparent); margin: 6px 0;` }, children: [] },
               // Secondary Stats
               {
                  type: "element",
                  tagName: "div",
-                 properties: { className: ["c-statblock__attributes"] },
+                 properties: { className: ["c-statblock__attributes"], style: `color: ${fontColor}; font-size: 14px; line-height: 1.4;` },
                  children: [
                     data.saves ? createAttribute("Saving Throws", data.saves) : null,
                     data.skills ? createAttribute("Skills", data.skills) : null,
@@ -93,14 +110,14 @@ export const ttrpgExtensions: Plugin = () => {
                  ].filter(Boolean)
               },
               // Divider
-              { type: "element", tagName: "hr", properties: { className: ["c-statblock__divider"] }, children: [] },
+              { type: "element", tagName: "hr", properties: { className: ["c-statblock__divider"], style: `border: 0; height: 2px; background-image: linear-gradient(to right, transparent, ${fontColor}, transparent); margin: 6px 0;` }, children: [] },
               // Traits
               ...(data.traits || []).map(t => createFeature(t.name, t.desc, "c-statblock__trait")),
               // Actions
               data.actions && data.actions.length > 0 ? {
                   type: "element",
                   tagName: "h4",
-                  properties: { className: ["c-statblock__section-header"] },
+                  properties: { className: ["c-statblock__section-header"], style: `border-bottom: 1px solid ${fontColor}; color: ${fontColor}; font-size: 18px; font-family: serif; margin-top: 12px; margin-bottom: 4px; padding-bottom: 2px;` },
                   children: [{ type: "text", value: "Actions" }]
               } : null,
               ...(data.actions || []).map(a => createFeature(a.name, a.desc, "c-statblock__action")),
@@ -135,7 +152,7 @@ function createAttribute(label: string, value: any) {
     tagName: "div",
     properties: { className: ["c-statblock__attribute"] },
     children: [
-      { type: "element", tagName: "strong", children: [{ type: "text", value: `${label} ` }] },
+      { type: "element", tagName: "strong", properties: { style: "font-weight: bold;" }, children: [{ type: "text", value: `${label} ` }] },
       { type: "text", value: String(value) }
     ]
   };
@@ -146,7 +163,7 @@ function createAbilityScores(stats: any) {
   return {
     type: "element",
     tagName: "div",
-    properties: { className: ["c-statblock__abilities"] },
+    properties: { className: ["c-statblock__abilities"], style: "display: flex; justify-content: space-around; text-align: center; margin: 8px 0;" },
     children: abilities.map(stat => {
       const score = stats[stat] || 10;
       const mod = Math.floor((score - 10) / 2);
@@ -156,8 +173,8 @@ function createAbilityScores(stats: any) {
         tagName: "div",
         properties: { className: ["c-statblock__ability"] },
         children: [
-           { type: "element", tagName: "div", properties: { className: ["c-statblock__ability-name"] }, children: [{ type: "text", value: stat.toUpperCase() }] },
-           { type: "element", tagName: "div", properties: { className: ["c-statblock__ability-score"] }, children: [{ type: "text", value: `${score} (${sign}${mod})` }] }
+           { type: "element", tagName: "div", properties: { className: ["c-statblock__ability-name"], style: "font-weight: bold; font-size: 10px;" }, children: [{ type: "text", value: stat.toUpperCase() }] },
+           { type: "element", tagName: "div", properties: { className: ["c-statblock__ability-score"], style: "font-size: 14px;" }, children: [{ type: "text", value: `${score} (${sign}${mod})` }] }
         ]
       };
     })
@@ -168,9 +185,9 @@ function createFeature(name: string, desc: string, className: string) {
   return {
     type: "element",
     tagName: "div",
-    properties: { className: [className] },
+    properties: { className: [className], style: "margin-bottom: 4px; font-size: 14px;" },
     children: [
-      { type: "element", tagName: "strong", properties: { className: ["c-statblock__feature-name"] }, children: [{ type: "text", value: `${name}. ` }] },
+      { type: "element", tagName: "strong", properties: { className: ["c-statblock__feature-name"], style: "font-style: italic; font-weight: bold;" }, children: [{ type: "text", value: `${name}. ` }] },
       { type: "text", value: desc }
     ]
   };

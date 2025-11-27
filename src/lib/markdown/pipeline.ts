@@ -6,11 +6,13 @@ import rehypeRaw from "rehype-raw";
 import rehypeStringify from "rehype-stringify";
 import { ttrpgExtensions } from "./ttrpgExtensions";
 
-export function createMarkdownProcessor() {
+import { TtrpgOptions } from "./ttrpgExtensions";
+
+export function createMarkdownProcessor(options: TtrpgOptions = {}) {
   return unified()
     .use(remarkParse)
     .use(remarkGfm)
-    .use(ttrpgExtensions)
+    .use(ttrpgExtensions, options)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(rehypeStringify);

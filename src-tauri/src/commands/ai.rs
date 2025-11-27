@@ -61,6 +61,8 @@ pub async fn ai_chat_completion(
             chat_model: "gpt-4o-mini".to_string(),
             embedding_model: "text-embedding-3-small".to_string(),
             theme_accent: None,
+            statblock_bg_color: None,
+            statblock_font_color: None,
         });
 
     // For RAG embedding, we currently only support OpenAI's embedding model

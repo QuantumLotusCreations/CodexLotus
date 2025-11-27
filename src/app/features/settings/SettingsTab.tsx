@@ -1,9 +1,28 @@
 import React, { useEffect, useState } from "react";
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { call } from "../../../lib/api/client";
 import { initializeProjectIndex } from "../../../lib/api/rag";
 import { vars } from "../../theme/tokens.css.ts";
 import { projectRootAtom } from "../../state/atoms/projectAtoms";
+import { settingsAtom } from "../../state/atoms/settingsAtoms";
+import { MarkdownPreview } from "../../components/markdown/MarkdownPreview";
+
+const PREVIEW_STATBLOCK = `\`\`\`statblock
+name: Preview Monster
+size: Medium
+type: construct
+alignment: unaligned
+ac: 15
+hp: 50
+speed: 30 ft.
+stats:
+  str: 16
+  dex: 12
+  con: 14
+  int: 8
+  wis: 10
+  cha: 6
+\`\`\``;
 
 export const SettingsTab: React.FC = () => {
   const [apiKey, setApiKey] = useState("");
@@ -11,9 +30,10 @@ export const SettingsTab: React.FC = () => {
   const [status, setStatus] = useState("");
   const [indexStatus, setIndexStatus] = useState("");
   const [isIndexing, setIsIndexing] = useState(false);
-  const [provider, setProvider] = useState("openai");
-  const [chatModel, setChatModel] = useState("gpt-4o-mini");
   const [settingsStatus, setSettingsStatus] = useState("");
+  
+  // Use the global atom for settings so updates propagate live
+  const [settings, setSettings] = useAtom(settingsAtom);
   
   const projectRoot = useAtomValue(projectRootAtom);
 
@@ -33,10 +53,16 @@ export const SettingsTab: React.FC = () => {
 
   async function loadSettings() {
     try {
-        const settings = await call<any>("load_settings");
-        if (settings) {
-            setProvider(settings.provider || "openai");
-            setChatModel(settings.chat_model || "gpt-4o-mini");
+        const loaded = await call<any>("load_settings");
+        if (loaded) {
+            setSettings({
+                provider: loaded.provider || "openai",
+                chat_model: loaded.chat_model || "gpt-4o-mini",
+                embedding_model: "text-embedding-3-small",
+                theme_accent: loaded.theme_accent,
+                statblock_bg_color: loaded.statblock_bg_color || "#fdf1dc",
+                statblock_font_color: loaded.statblock_font_color || "#58180D"
+            });
         }
     } catch(e) {
         console.error(e);
@@ -46,12 +72,7 @@ export const SettingsTab: React.FC = () => {
   async function handleSaveSettings() {
     try {
         await call("save_settings", {
-            settings: {
-                provider,
-                chat_model: chatModel,
-                embedding_model: "text-embedding-3-small", // default
-                theme_accent: null
-            }
+            settings
         });
         setSettingsStatus("Settings saved.");
         setTimeout(() => setSettingsStatus(""), 3000);
@@ -97,7 +118,7 @@ export const SettingsTab: React.FC = () => {
   return (
     <div style={{ 
         padding: 32, 
-        maxWidth: 600, 
+        maxWidth: "100%", 
         color: vars.color.text.primary, 
         height: "100%", 
         overflowY: "auto" // Enable scrolling
@@ -114,8 +135,8 @@ export const SettingsTab: React.FC = () => {
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", marginBottom: 8, fontWeight: 500 }}>AI Provider</label>
             <select 
-                value={provider}
-                onChange={(e) => setProvider(e.target.value)}
+                value={settings.provider}
+                onChange={(e) => setSettings(prev => ({ ...prev, provider: e.target.value }))}
                 style={{
                     width: "100%",
                     padding: "8px",
@@ -134,8 +155,8 @@ export const SettingsTab: React.FC = () => {
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", marginBottom: 8, fontWeight: 500 }}>Chat Model</label>
             <select 
-                value={chatModel}
-                onChange={(e) => setChatModel(e.target.value)}
+                value={settings.chat_model}
+                onChange={(e) => setSettings(prev => ({ ...prev, chat_model: e.target.value }))}
                 style={{
                     width: "100%",
                     padding: "8px",
@@ -145,7 +166,7 @@ export const SettingsTab: React.FC = () => {
                     color: vars.color.text.primary
                 }}
             >
-                {provider === "openai" ? (
+                {settings.provider === "openai" ? (
                     <>
                         <option value="gpt-4o-mini">GPT-4o Mini</option>
                         <option value="gpt-4o">GPT-4o</option>
@@ -182,7 +203,7 @@ export const SettingsTab: React.FC = () => {
 
           <div style={{ marginBottom: 16, borderTop: `1px solid ${vars.color.border.subtle}`, paddingTop: 16 }}>
             <label style={{ display: "block", marginBottom: 8, fontWeight: 500 }}>
-              {provider === "openai" ? "OpenAI API Key" : "Google AI API Key"}
+              {settings.provider === "openai" ? "OpenAI API Key" : "Google AI API Key"}
             </label>
             <div style={{ display: "flex", gap: 12 }}>
               <input 
@@ -219,6 +240,86 @@ export const SettingsTab: React.FC = () => {
               Your key is stored securely in your operating system's keychain. It is never sent to our servers.
             </div>
           </div>
+        </div>
+      </section>
+
+      <section style={{ marginBottom: 32 }}>
+        <h3 style={{ color: vars.color.text.accent, marginBottom: 16 }}>Stat Block Customization</h3>
+        <div style={{ backgroundColor: vars.color.background.panelRaised, padding: 20, borderRadius: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                <div>
+                    <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: "block", marginBottom: 8, fontWeight: 500 }}>Background Color</label>
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <input 
+                                type="color" 
+                                value={settings.statblock_bg_color || "#fdf1dc"}
+                                onChange={(e) => setSettings(prev => ({ ...prev, statblock_bg_color: e.target.value }))}
+                                style={{ height: 38, width: 60, padding: 0, border: "none", cursor: "pointer" }}
+                            />
+                            <input 
+                                type="text"
+                                value={settings.statblock_bg_color || "#fdf1dc"}
+                                onChange={(e) => setSettings(prev => ({ ...prev, statblock_bg_color: e.target.value }))}
+                                style={{ 
+                                    flex: 1,
+                                    padding: "8px", 
+                                    borderRadius: 4, 
+                                    border: `1px solid ${vars.color.border.subtle}`,
+                                    backgroundColor: vars.color.background.base,
+                                    color: vars.color.text.primary
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: "block", marginBottom: 8, fontWeight: 500 }}>Font Color</label>
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <input 
+                                type="color" 
+                                value={settings.statblock_font_color || "#58180D"}
+                                onChange={(e) => setSettings(prev => ({ ...prev, statblock_font_color: e.target.value }))}
+                                style={{ height: 38, width: 60, padding: 0, border: "none", cursor: "pointer" }}
+                            />
+                            <input 
+                                type="text"
+                                value={settings.statblock_font_color || "#58180D"}
+                                onChange={(e) => setSettings(prev => ({ ...prev, statblock_font_color: e.target.value }))}
+                                style={{ 
+                                    flex: 1,
+                                    padding: "8px", 
+                                    borderRadius: 4, 
+                                    border: `1px solid ${vars.color.border.subtle}`,
+                                    backgroundColor: vars.color.background.base,
+                                    color: vars.color.text.primary
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setSettings(prev => ({ ...prev, statblock_bg_color: "#fdf1dc", statblock_font_color: "#58180D" }))}
+                        style={{
+                            padding: "6px 12px",
+                            borderRadius: 4,
+                            border: `1px solid ${vars.color.border.subtle}`,
+                            backgroundColor: "transparent",
+                            color: vars.color.text.secondary,
+                            fontSize: 12,
+                            cursor: "pointer"
+                        }}
+                    >
+                        Reset to Defaults
+                    </button>
+                </div>
+                <div style={{ border: `1px solid ${vars.color.border.subtle}`, borderRadius: 4, overflow: "hidden", backgroundColor: "#1a1a1a" }}>
+                    <div style={{ padding: 8, borderBottom: `1px solid ${vars.color.border.subtle}`, fontSize: 12, color: vars.color.text.secondary, backgroundColor: vars.color.background.panel }}>
+                        Preview
+                    </div>
+                    <div style={{ height: 300, overflowY: "auto" }}>
+                        <MarkdownPreview content={PREVIEW_STATBLOCK} />
+                    </div>
+                </div>
+            </div>
         </div>
       </section>
 

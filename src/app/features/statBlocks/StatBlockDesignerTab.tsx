@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import yaml from "js-yaml";
 import { vars } from "../../theme/tokens.css.ts";
 import { MarkdownPreview } from "../../components/markdown/MarkdownPreview";
 
@@ -52,34 +53,8 @@ export const StatBlockDesignerTab: React.FC = () => {
 
   useEffect(() => {
     // Generate YAML-like markdown block
-    const yaml = [
-      "```statblock",
-      `name: ${block.name}`,
-      `size: ${block.size}`,
-      `type: ${block.type}`,
-      `alignment: ${block.alignment}`,
-      `ac: ${block.ac}`,
-      `hp: ${block.hp}`,
-      `speed: ${block.speed}`,
-      "stats:",
-      `  str: ${block.stats.str}`,
-      `  dex: ${block.stats.dex}`,
-      `  con: ${block.stats.con}`,
-      `  int: ${block.stats.int}`,
-      `  wis: ${block.stats.wis}`,
-      `  cha: ${block.stats.cha}`,
-      block.saves ? `saves: ${block.saves}` : null,
-      block.skills ? `skills: ${block.skills}` : null,
-      `senses: ${block.senses}`,
-      `languages: ${block.languages}`,
-      `cr: ${block.cr}`,
-      block.traits && block.traits.length > 0 ? "traits:" : null,
-      ...(block.traits || []).map(t => `  - name: ${t.name}\n    desc: ${t.desc}`),
-      block.actions && block.actions.length > 0 ? "actions:" : null,
-      ...(block.actions || []).map(a => `  - name: ${a.name}\n    desc: ${a.desc}`),
-      "```"
-    ].filter(Boolean).join("\n");
-    setMarkdown(yaml);
+    const yamlStr = yaml.dump(block, { lineWidth: -1 });
+    setMarkdown(`\`\`\`statblock\n${yamlStr}\`\`\``);
   }, [block]);
 
   const handleChange = (field: keyof StatBlock, value: any) => {

@@ -11,6 +11,8 @@ pub struct AppSettings {
   pub chat_model: String,
   pub embedding_model: String,
   pub theme_accent: Option<String>,
+  pub statblock_bg_color: Option<String>,
+  pub statblock_font_color: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -50,6 +52,8 @@ pub async fn load_settings(app: tauri::AppHandle) -> Result<AppSettings, Error> 
     chat_model: "gpt-4o-mini".to_string(),
     embedding_model: "text-embedding-3-small".to_string(),
     theme_accent: None,
+    statblock_bg_color: Some("#fdf1dc".to_string()),
+    statblock_font_color: Some("#58180D".to_string()),
   };
 
   if let Some(path) = get_settings_path(&app) {

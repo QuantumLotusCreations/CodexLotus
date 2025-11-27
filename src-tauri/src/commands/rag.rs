@@ -55,6 +55,8 @@ async fn get_client(
             chat_model: "gpt-4o-mini".to_string(),
             embedding_model: "text-embedding-3-small".to_string(),
             theme_accent: None,
+            statblock_bg_color: None,
+            statblock_font_color: None,
         });
 
     if settings.provider == "gemini" {
