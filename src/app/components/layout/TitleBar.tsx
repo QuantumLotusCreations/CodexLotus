@@ -86,6 +86,9 @@ export const TitleBar: React.FC = () => {
                     <div className={menuDropdownItem} onClick={() => { closeMenu(); openTool("auto-tagger", "Auto Tagger"); }}>
                         Auto Tagger
                     </div>
+                    <div className={menuDropdownItem} onClick={() => { closeMenu(); openTool("rule-calculators", "Rule Calculators"); }}>
+                        Rule Calculators
+                    </div>
                     <div style={{ height: 1, backgroundColor: "rgba(255,255,255,0.1)", margin: "4px 0" }} />
                     <div className={menuDropdownItem} onClick={() => { closeMenu(); openTool("bestiary-generator", "Bestiary Generator"); }}>
                         Bestiary Generator

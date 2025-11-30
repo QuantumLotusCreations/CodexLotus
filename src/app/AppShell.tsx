@@ -16,6 +16,7 @@ import { StatBlockDesignerTab } from "./features/statBlocks/StatBlockDesignerTab
 import { LoreMapTab } from "./features/loreMap/LoreMapTab";
 import { AutoTaggerTab } from "./features/autoTagger/AutoTaggerTab";
 import { ProceduralGeneratorTab } from "./features/procedural/ProceduralGeneratorTab";
+import { RuleCalculatorsTab } from "./features/ruleCalculators/RuleCalculatorsTab";
 import { getIndexStats, initializeProjectIndex } from "../lib/api/rag";
 import { call } from "../lib/api/client";
 
@@ -30,6 +31,7 @@ function getComponentForTab(tab: WorkspaceTab): React.ComponentType | null {
       if (tab.payload?.toolId === "stat-block-designer") return StatBlockDesignerTab;
       if (tab.payload?.toolId === "lore-map") return LoreMapTab;
       if (tab.payload?.toolId === "auto-tagger") return AutoTaggerTab;
+      if (tab.payload?.toolId === "rule-calculators") return RuleCalculatorsTab;
       if (["bestiary-generator", "location-generator", "item-generator"].includes(tab.payload?.toolId as string)) {
           return ProceduralGeneratorTab;
       }
