@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { vars } from "../../theme/tokens.css";
 import { XPCalculator } from "./XPCalculator";
+import { EncounterCalculator } from "./EncounterCalculator";
+import { AbilityCostCalculator } from "./AbilityCostCalculator";
+import { EconomyCalculator } from "./EconomyCalculator";
 
 type CalculatorType = "xp-curve" | "encounter" | "ability-cost" | "economy";
 
@@ -12,11 +15,11 @@ export const RuleCalculatorsTab: React.FC = () => {
       case "xp-curve":
         return <XPCalculator />;
       case "encounter":
-        return <Placeholder title="Encounter Budget" description="Calculate encounter difficulty thresholds based on party size and level." />;
+        return <EncounterCalculator />;
       case "ability-cost":
-        return <Placeholder title="Ability Score Costs" description="Balance point-buy costs or attribute scaling." />;
+        return <AbilityCostCalculator />;
       case "economy":
-        return <Placeholder title="Economy & Crafting" description="Estimate item prices and crafting times based on rarity and power." />;
+        return <EconomyCalculator />;
       default:
         return <div style={{ padding: 24 }}>Select a calculator</div>;
     }
