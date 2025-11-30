@@ -80,6 +80,22 @@ export const TitleBar: React.FC = () => {
                     <div className={menuDropdownItem} onClick={() => { closeMenu(); openTool("stat-block-designer", "Stat Block Designer"); }}>
                         Stat Block Designer
                     </div>
+                    <div className={menuDropdownItem} onClick={() => { closeMenu(); openTool("lore-map", "Lore Map"); }}>
+                        Lore Map
+                    </div>
+                    <div className={menuDropdownItem} onClick={() => { closeMenu(); openTool("auto-tagger", "Auto Tagger"); }}>
+                        Auto Tagger
+                    </div>
+                    <div style={{ height: 1, backgroundColor: "rgba(255,255,255,0.1)", margin: "4px 0" }} />
+                    <div className={menuDropdownItem} onClick={() => { closeMenu(); openTool("bestiary-generator", "Bestiary Generator"); }}>
+                        Bestiary Generator
+                    </div>
+                    <div className={menuDropdownItem} onClick={() => { closeMenu(); openTool("location-generator", "Location Generator"); }}>
+                        Location Generator
+                    </div>
+                    <div className={menuDropdownItem} onClick={() => { closeMenu(); openTool("item-generator", "Item & Culture Generator"); }}>
+                        Item Generator
+                    </div>
                 </div>
             )}
         </div>

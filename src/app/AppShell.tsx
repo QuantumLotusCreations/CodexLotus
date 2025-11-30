@@ -13,6 +13,9 @@ import { SettingsTab } from "./features/settings/SettingsTab";
 import { EditorWorkspace } from "./features/editor/EditorWorkspace";
 import { DiceProbabilityTab } from "./features/diceTools/DiceProbabilityTab";
 import { StatBlockDesignerTab } from "./features/statBlocks/StatBlockDesignerTab";
+import { LoreMapTab } from "./features/loreMap/LoreMapTab";
+import { AutoTaggerTab } from "./features/autoTagger/AutoTaggerTab";
+import { ProceduralGeneratorTab } from "./features/procedural/ProceduralGeneratorTab";
 import { getIndexStats, initializeProjectIndex } from "../lib/api/rag";
 import { call } from "../lib/api/client";
 
@@ -25,6 +28,11 @@ function getComponentForTab(tab: WorkspaceTab): React.ComponentType | null {
     case "tool":
       if (tab.payload?.toolId === "dice-calculator") return DiceProbabilityTab;
       if (tab.payload?.toolId === "stat-block-designer") return StatBlockDesignerTab;
+      if (tab.payload?.toolId === "lore-map") return LoreMapTab;
+      if (tab.payload?.toolId === "auto-tagger") return AutoTaggerTab;
+      if (["bestiary-generator", "location-generator", "item-generator"].includes(tab.payload?.toolId as string)) {
+          return ProceduralGeneratorTab;
+      }
       return null;
     default:
       return null;

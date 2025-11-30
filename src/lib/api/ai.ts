@@ -4,6 +4,8 @@ import { call } from "./client";
 export interface ChatRequest {
   prompt: string;
   project_root?: string;
+  provider?: string;
+  model?: string;
 }
 
 export interface ChatResponse {
@@ -29,9 +31,14 @@ export interface IndexStats {
   is_indexed: boolean;
 }
 
+export async function ai_chat_completion(req: ChatRequest): Promise<ChatResponse> {
+    // The backend expects { req: ChatRequest } because the argument is named 'req'
+    return call<ChatResponse>("ai_chat_completion", { req });
+}
+
 export function useChatCompletion() {
   return useMutation<ChatResponse, Error, ChatRequest>({
-    mutationFn: (req) => call<ChatResponse>("ai_chat_completion", { req }),
+    mutationFn: (req) => ai_chat_completion(req),
   });
 }
 

@@ -13,4 +13,7 @@ export default defineConfig(() => ({
     strictPort: true,
   },
   envPrefix: ["VITE_", "TAURI_"],
+  optimizeDeps: {
+    include: ["react-force-graph-2d"]
+  }
 }));
