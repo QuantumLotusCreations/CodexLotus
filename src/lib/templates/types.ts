@@ -7,6 +7,7 @@ export interface TemplateField {
   defaultValue?: any;
   options?: string[]; // For 'select' type
   description?: string; // Helper text
+  group?: string; // 'stats' for horizontal stat bar, or section name
 }
 
 export type TemplateType = "entity" | "collection";

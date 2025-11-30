@@ -81,16 +81,32 @@ export const StatBlockDesignerTab: React.FC = () => {
 
   // Generate Markdown
   useEffect(() => {
-    // We use a generic 'codex' block for custom templates
-    // For now, we can just dump yaml.
-    // If it's the legacy statblock, we might want to use specific logic, but let's try to make everything generic.
-    
-    const data = {
+    // Structure data to support grouping
+    const finalData: any = {
         template: currentTemplate.id,
-        ...formData
     };
+
+    // Separate regular fields from groups
+    const groups: Record<string, Record<string, any>> = {};
     
-    const yamlStr = yaml.dump(data, { lineWidth: -1 });
+    currentTemplate.fields.forEach(field => {
+        const value = formData[field.key];
+        if (value !== undefined && value !== "") {
+            if (field.group) {
+                if (!groups[field.group]) groups[field.group] = {};
+                groups[field.group][field.key] = value;
+            } else {
+                finalData[field.key] = value;
+            }
+        }
+    });
+
+    // Merge groups into final data
+    Object.entries(groups).forEach(([groupName, groupData]) => {
+        finalData[groupName.toLowerCase()] = groupData;
+    });
+    
+    const yamlStr = yaml.dump(finalData, { lineWidth: -1 });
     setMarkdown(`\`\`\`codex\n${yamlStr}\`\`\``);
   }, [formData, currentTemplate]);
 

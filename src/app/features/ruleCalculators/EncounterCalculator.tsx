@@ -10,7 +10,7 @@ interface Threshold {
 // System Agnostic Defaults
 // We start with empty or very basic values instead of D&D CR tables.
 const DEFAULT_POWER_CURVE: Record<string, number> = {
-  "1": 100, "2": 200, "3": 400, "4": 800, "5": 1600
+  "1": 100, "2": 200, "3": 300, "4": 400, "5": 500
 };
 
 export const EncounterCalculator: React.FC = () => {

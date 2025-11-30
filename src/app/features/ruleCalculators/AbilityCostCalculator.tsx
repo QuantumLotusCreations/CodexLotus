@@ -15,10 +15,10 @@ export const AbilityCostCalculator: React.FC = () => {
 
   // Current Attribute Values
   const [attributes, setAttributes] = useState<{ name: string; score: number }[]>([
-      { name: "Might", score: 1 },
-      { name: "Agility", score: 1 },
-      { name: "Intellect", score: 1 },
-      { name: "Spirit", score: 1 }
+      { name: "Attribute 1", score: 1 },
+      { name: "Attribute 2", score: 1 },
+      { name: "Attribute 3", score: 1 },
+      { name: "Attribute 4", score: 1 }
   ]);
 
   const [newAttrName, setNewAttrName] = useState("");

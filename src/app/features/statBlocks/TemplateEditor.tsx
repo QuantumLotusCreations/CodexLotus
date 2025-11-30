@@ -169,6 +169,15 @@ export const TemplateEditor: React.FC<{ onClose: () => void }> = ({ onClose }) =
                             <option value="select">Dropdown</option>
                         </select>
                     </div>
+                    <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: 10, color: vars.color.text.muted }}>Group (Optional)</label>
+                        <input 
+                            value={field.group || ""}
+                            onChange={e => updateField(index, { group: e.target.value || undefined })}
+                            placeholder="e.g. Stats, Saves"
+                            style={{ width: "100%", padding: 6, borderRadius: 4, border: `1px solid ${vars.color.border.subtle}`, background: vars.color.background.base, color: vars.color.text.primary }}
+                        />
+                    </div>
                      <button 
                         onClick={() => removeField(index)}
                         style={{ marginTop: 16, color: vars.color.state.danger, background: "none", border: "none", cursor: "pointer" }}
