@@ -2,7 +2,7 @@ import { style } from "@vanilla-extract/css";
 import { vars } from "./tokens.css.ts";
 
 export const sidebarRoot = style({
-  width: 260,
+  width: "100%",
   backgroundColor: vars.color.background.sidebar,
   borderRight: `1px solid ${vars.color.border.subtle}`,
   display: "flex",

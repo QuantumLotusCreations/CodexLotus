@@ -33,7 +33,7 @@ function getComponentForTab(tab: WorkspaceTab): React.ComponentType | null {
 
 export const AppShell: React.FC = () => {
   const { tabs, activeTabId } = useAtomValue(workspaceAtoms.viewModelAtom);
-  const [{ isChatOpen, chatWidth }, setLayout] = useAtom(layoutAtoms.baseAtom);
+  const [{ isChatOpen, chatWidth, sidebarWidth }, setLayout] = useAtom(layoutAtoms.baseAtom);
   const projectRoot = useAtomValue(projectRootAtom);
   
   const activeTab = tabs.find((t) => t.id === activeTabId);
@@ -65,30 +65,50 @@ export const AppShell: React.FC = () => {
     checkAndIndex();
   }, [projectRoot]);
 
-  // Resizing Logic
-  const isResizingRef = useRef(false);
-  const startXRef = useRef(0);
-  const startWidthRef = useRef(0);
+  // Resizing Logic for Chat
+  const isChatResizingRef = useRef(false);
+  const startChatXRef = useRef(0);
+  const startChatWidthRef = useRef(0);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    isResizingRef.current = true;
-    startXRef.current = e.clientX;
-    startWidthRef.current = chatWidth;
+  // Resizing Logic for Sidebar
+  const isSidebarResizingRef = useRef(false);
+  const startSidebarXRef = useRef(0);
+  const startSidebarWidthRef = useRef(0);
+
+  const handleChatMouseDown = useCallback((e: React.MouseEvent) => {
+    isChatResizingRef.current = true;
+    startChatXRef.current = e.clientX;
+    startChatWidthRef.current = chatWidth;
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
   }, [chatWidth]);
 
+  const handleSidebarMouseDown = useCallback((e: React.MouseEvent) => {
+    isSidebarResizingRef.current = true;
+    startSidebarXRef.current = e.clientX;
+    startSidebarWidthRef.current = sidebarWidth;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, [sidebarWidth]);
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizingRef.current) return;
-      const delta = startXRef.current - e.clientX;
-      const newWidth = Math.max(200, Math.min(800, startWidthRef.current + delta));
-      setLayout((prev) => ({ ...prev, chatWidth: newWidth }));
+      if (isChatResizingRef.current) {
+        const delta = startChatXRef.current - e.clientX;
+        const newWidth = Math.max(200, Math.min(800, startChatWidthRef.current + delta));
+        setLayout((prev) => ({ ...prev, chatWidth: newWidth }));
+      }
+      if (isSidebarResizingRef.current) {
+        const delta = e.clientX - startSidebarXRef.current;
+        const newWidth = Math.max(150, Math.min(600, startSidebarWidthRef.current + delta));
+        setLayout((prev) => ({ ...prev, sidebarWidth: newWidth }));
+      }
     };
 
     const handleMouseUp = () => {
-      if (isResizingRef.current) {
-        isResizingRef.current = false;
+      if (isChatResizingRef.current || isSidebarResizingRef.current) {
+        isChatResizingRef.current = false;
+        isSidebarResizingRef.current = false;
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
       }
@@ -106,7 +126,11 @@ export const AppShell: React.FC = () => {
     <div className={appShell.root}>
       <TitleBar />
       <div className={appShell.workspaceRow}>
-        <Sidebar />
+        <div style={{ width: sidebarWidth, display: 'flex', flexShrink: 0 }}>
+             <Sidebar />
+        </div>
+        <div className={appShell.resizer} onMouseDown={handleSidebarMouseDown} />
+        
         <div className={appShell.main}>
             <div className={appShell.workspaceContainer}>
             {/* Center Pane: TabBar + Content */}
@@ -130,7 +154,7 @@ export const AppShell: React.FC = () => {
             {/* Resizable Right Panel */}
             {isChatOpen && (
                 <>
-                <div className={appShell.resizer} onMouseDown={handleMouseDown} />
+                <div className={appShell.resizer} onMouseDown={handleChatMouseDown} />
                 <div 
                     className={appShell.rightPanel} 
                     style={{ width: chatWidth }}

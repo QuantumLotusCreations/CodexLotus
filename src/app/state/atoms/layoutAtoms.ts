@@ -3,11 +3,13 @@ import { atom } from "jotai";
 export interface LayoutState {
   isChatOpen: boolean;
   chatWidth: number;
+  sidebarWidth: number;
 }
 
 const baseAtom = atom<LayoutState>({
   isChatOpen: true,
   chatWidth: 320,
+  sidebarWidth: 260,
 });
 
 const viewModelAtom = atom((get) => get(baseAtom));
@@ -22,10 +24,16 @@ const setChatWidthAtom = atom(null, (get, set, width: number) => {
   set(baseAtom, { ...s, chatWidth: width });
 });
 
+const setSidebarWidthAtom = atom(null, (get, set, width: number) => {
+  const s = get(baseAtom);
+  set(baseAtom, { ...s, sidebarWidth: width });
+});
+
 export const layoutAtoms = {
   baseAtom,
   viewModelAtom,
   toggleChatAtom,
   setChatWidthAtom,
+  setSidebarWidthAtom,
 };
 

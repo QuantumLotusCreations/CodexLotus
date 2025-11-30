@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { useAtomValue } from "jotai";
+import { join } from "@tauri-apps/api/path";
 import yaml from "js-yaml";
-import { vars } from "../../theme/tokens.css.ts";
+import { vars } from "../../theme/tokens.css";
 import { MarkdownPreview } from "../../components/markdown/MarkdownPreview";
+import { projectRootAtom } from "../../state/atoms/projectAtoms";
+import { createDirectory, writeFile } from "../../../lib/api/files";
 
 interface StatBlock {
   name: string;
@@ -47,6 +51,7 @@ const DEFAULT_BLOCK: StatBlock = {
 };
 
 export const StatBlockDesignerTab: React.FC = () => {
+  const projectRoot = useAtomValue(projectRootAtom);
   const [block, setBlock] = useState<StatBlock>(DEFAULT_BLOCK);
   const [markdown, setMarkdown] = useState("");
   const [showPreview, setShowPreview] = useState(false); // Disabled by default to prevent crash
@@ -70,6 +75,25 @@ export const StatBlockDesignerTab: React.FC = () => {
     alert("Copied to clipboard!");
   };
 
+  const handleSave = async () => {
+    if (!projectRoot) return;
+
+    try {
+      const statBlocksDir = await join(projectRoot, "StatBlocks");
+      await createDirectory(statBlocksDir);
+
+      const safeName = block.name.replace(/[<>:"/\\|?*]/g, '-');
+      const fileName = `${safeName}.md`;
+      const filePath = await join(statBlocksDir, fileName);
+
+      await writeFile(filePath, markdown);
+      alert(`Saved ${block.name} to StatBlocks folder!`);
+    } catch (error) {
+      console.error("Failed to save stat block:", error);
+      alert("Failed to save stat block. Check console for details.");
+    }
+  };
+
   return (
     <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
       {/* Form */}
@@ -80,7 +104,27 @@ export const StatBlockDesignerTab: React.FC = () => {
           borderRight: `1px solid ${vars.color.border.subtle}`,
           color: vars.color.text.primary
       }}>
-        <h2 style={{ marginBottom: 24 }}>Stat Block Designer</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+          <h2 style={{ margin: 0 }}>Stat Block Designer</h2>
+          <div title={!projectRoot ? "Open a project to save stat blocks" : "Save to project"}>
+            <button 
+              onClick={handleSave}
+              disabled={!projectRoot}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 4,
+                border: "none",
+                backgroundColor: !projectRoot ? vars.color.background.panelRaised : vars.color.accent.primary,
+                color: !projectRoot ? vars.color.text.muted : vars.color.text.inverse,
+                fontWeight: 600,
+                cursor: !projectRoot ? "not-allowed" : "pointer",
+                opacity: !projectRoot ? 0.7 : 1
+              }}
+            >
+              Save to Project
+            </button>
+          </div>
+        </div>
         
         <div style={{ display: "grid", gap: 16, marginBottom: 24 }}>
             <div>
