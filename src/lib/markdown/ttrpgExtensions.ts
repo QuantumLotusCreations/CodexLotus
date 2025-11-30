@@ -38,19 +38,88 @@ export const ttrpgExtensions: Plugin<[TtrpgOptions?]> = (options = {}) => {
   
   return (tree) => {
     visit(tree, "code", (node: any, index, parent) => {
-      if (node.lang === "statblock") {
+      if (node.lang === "statblock" || node.lang === "codex") {
         try {
-          const data = yaml.load(node.value) as StatBlock;
+          const data = yaml.load(node.value) as any;
           
           // Create HAST (HTML Abstract Syntax Tree) structure
           const hast = {
             type: "element",
             tagName: "div",
             properties: { 
-              className: ["c-statblock"],
+              className: ["c-statblock", "c-codex-block"],
               style: `background-color: ${bgColor}; color: ${fontColor}; font-family: 'Noto Sans', sans-serif; padding: 16px; border: 1px solid #e0c99a; border-radius: 4px; box-shadow: 0 0 6px rgba(0,0,0,0.5); margin: 24px 0; max-width: 400px; overflow-wrap: break-word; white-space: pre-wrap;`
             },
             children: [
+              // If it's a legacy D&D 5e statblock (has 'stats' object with str/dex/etc), use specific renderer
+              // Otherwise, use generic renderer
+              (isLegacy5e(data) && node.lang === "statblock") ? render5eContent(data, fontColor) : renderGenericContent(data, fontColor)
+            ].flat().filter(Boolean)
+          };
+
+          node.data = node.data || {};
+          node.data.hName = "div";
+          node.data.hProperties = hast.properties;
+          node.data.hChildren = hast.children;
+        } catch (e) {
+          console.error("Failed to parse statblock", e);
+        }
+      }
+    });
+  };
+};
+
+function isLegacy5e(data: any): boolean {
+    return !!(data.stats && data.stats.str !== undefined);
+}
+
+function renderGenericContent(data: any, fontColor: string) {
+    const entries = Object.entries(data).filter(([k]) => k !== "template");
+    
+    // Header (Name)
+    const nameEntry = entries.find(([k]) => k.toLowerCase() === "name");
+    const otherEntries = entries.filter(([k]) => k.toLowerCase() !== "name");
+    
+    const children: any[] = [];
+    
+    if (nameEntry) {
+        children.push({
+            type: "element",
+            tagName: "h3",
+            properties: { 
+                className: ["c-codex__name"],
+                style: `font-family: serif; font-size: 24px; font-weight: bold; margin: 0 0 12px 0; color: ${fontColor}; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid ${fontColor}; padding-bottom: 4px;`
+            },
+            children: [{ type: "text", value: String(nameEntry[1]) }]
+        });
+    }
+    
+    // Render other fields as key-value pairs
+    otherEntries.forEach(([key, value]) => {
+        // Format key: camelCase to Title Case (simple)
+        const label = key.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase());
+        
+        children.push({
+            type: "element",
+            tagName: "div",
+            properties: { className: ["c-codex__entry"], style: "margin-bottom: 4px; font-size: 14px; line-height: 1.4;" },
+            children: [
+                { 
+                    type: "element", 
+                    tagName: "strong", 
+                    properties: { style: "font-weight: bold; opacity: 0.8;" }, 
+                    children: [{ type: "text", value: `${label}: ` }] 
+                },
+                { type: "text", value: Array.isArray(value) ? value.join(", ") : String(value) }
+            ]
+        });
+    });
+    
+    return children;
+}
+
+function render5eContent(data: any, fontColor: string) {
+    return [
               // Header
               {
                 type: "element",
@@ -112,7 +181,7 @@ export const ttrpgExtensions: Plugin<[TtrpgOptions?]> = (options = {}) => {
               // Divider
               { type: "element", tagName: "hr", properties: { className: ["c-statblock__divider"], style: `border: 0; height: 2px; background-image: linear-gradient(to right, transparent, ${fontColor}, transparent); margin: 6px 0;` }, children: [] },
               // Traits
-              ...(data.traits || []).map(t => createFeature(t.name, t.desc, "c-statblock__trait")),
+              ...(data.traits || []).map((t: any) => createFeature(t.name, t.desc, "c-statblock__trait")),
               // Actions
               data.actions && data.actions.length > 0 ? {
                   type: "element",
@@ -120,31 +189,9 @@ export const ttrpgExtensions: Plugin<[TtrpgOptions?]> = (options = {}) => {
                   properties: { className: ["c-statblock__section-header"], style: `border-bottom: 1px solid ${fontColor}; color: ${fontColor}; font-size: 18px; font-family: serif; margin-top: 12px; margin-bottom: 4px; padding-bottom: 2px;` },
                   children: [{ type: "text", value: "Actions" }]
               } : null,
-              ...(data.actions || []).map(a => createFeature(a.name, a.desc, "c-statblock__action")),
-            ].filter(Boolean)
-          };
-
-          // Replace the code block with our HTML structure
-          // We must set data.hProperties and data.hName for remark-rehype to handle it if we were transforming generic nodes,
-          // but since we are replacing the node entirely, we usually swap it out.
-          // However, remark operates on MDAST (Markdown AST), and we want to inject HAST (HTML AST).
-          // The standard way in remark-rehype is that if a node has `data.hName` and `data.hChildren`, it uses those.
-          
-          node.data = node.data || {};
-          node.data.hName = "div";
-          node.data.hProperties = hast.properties;
-          node.data.hChildren = hast.children;
-          
-          // We don't need to change node.type or children here if we use data.h* properties,
-          // remark-rehype will respect them.
-        } catch (e) {
-          console.error("Failed to parse statblock", e);
-          // Leave as code block if parsing fails
-        }
-      }
-    });
-  };
-};
+              ...(data.actions || []).map((a: any) => createFeature(a.name, a.desc, "c-statblock__action")),
+    ];
+}
 
 function createAttribute(label: string, value: any) {
   return {

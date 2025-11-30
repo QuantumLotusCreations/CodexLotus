@@ -99,6 +99,25 @@ pub fn create_directory(path: String) -> tauri::Result<()> {
 }
 
 #[tauri::command]
+pub fn list_files_in_dir(path: String) -> tauri::Result<Vec<String>> {
+  let mut files = Vec::new();
+  let dir_path = PathBuf::from(&path);
+
+  if !dir_path.is_dir() {
+      return Ok(files); // Not a directory or doesn't exist, just return empty
+  }
+
+  for entry_result in fs::read_dir(&dir_path)? {
+      if let Ok(entry) = entry_result {
+          if let Ok(file_name) = entry.file_name().into_string() {
+              files.push(file_name);
+          }
+      }
+  }
+  Ok(files)
+}
+
+#[tauri::command]
 pub fn copy_file(source: String, destination: String) -> tauri::Result<()> {
   if let Some(parent) = Path::new(&destination).parent() {
     fs::create_dir_all(parent)?;

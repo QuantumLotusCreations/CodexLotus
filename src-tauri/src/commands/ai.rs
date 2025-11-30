@@ -95,11 +95,29 @@ pub async fn ai_chat_completion(
         }
     }
 
-    // 3. Build Prompt with Context
-    let context_builder = ContextBuilder::new().with_context(context_chunks);
+    // 3. Load Templates (if project root exists)
+    let mut templates = Vec::new();
+    if let Some(root) = &req.project_root {
+        let template_dir = std::path::Path::new(root).join(".codex").join("templates");
+        if template_dir.exists() {
+            if let Ok(entries) = std::fs::read_dir(template_dir) {
+                for entry in entries.flatten() {
+                    if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                        templates.push(content);
+                    }
+                }
+            }
+        }
+    }
+
+    // 4. Build Prompt with Context
+    let context_builder = ContextBuilder::new()
+        .with_context(context_chunks)
+        .with_templates(templates);
+    
     let prompt = context_builder.build_prompt(&req.prompt);
 
-    // 4. Send to LLM
+    // 5. Send to LLM
     let content = match client.chat_completion(&prompt).await {
         Ok(c) => c,
         Err(err) => format!("AI error: {err}"),

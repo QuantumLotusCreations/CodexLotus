@@ -20,8 +20,12 @@ export async function createDirectory(path: string) {
   return call<void>("create_directory", { path });
 }
 
-export async function copyFile(source: string, destination: string) {
+export async function copyFile(source: String, destination: String) {
   return call<void>("copy_file", { source, destination });
+}
+
+export async function listFilesInDir(path: string) {
+  return call<string[]>("list_files_in_dir", { path });
 }
 
 

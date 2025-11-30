@@ -5,74 +5,98 @@ import yaml from "js-yaml";
 import { vars } from "../../theme/tokens.css";
 import { MarkdownPreview } from "../../components/markdown/MarkdownPreview";
 import { projectRootAtom } from "../../state/atoms/projectAtoms";
-import { createDirectory, writeFile } from "../../../lib/api/files";
+import { createDirectory, writeFile, listFilesInDir, readFile } from "../../../lib/api/files";
+import { TableTemplate, DEFAULT_TEMPLATE } from "../../../lib/templates/types";
+import { DynamicForm } from "../../components/forms/DynamicForm";
+import { TemplateEditor } from "./TemplateEditor";
 
-interface StatBlock {
-  name: string;
-  size: string;
-  type: string;
-  alignment: string;
-  ac: number;
-  hp: number;
-  speed: string;
-  stats: {
-    str: number;
-    dex: number;
-    con: number;
-    int: number;
-    wis: number;
-    cha: number;
-  };
-  saves: string;
-  skills: string;
-  senses: string;
-  languages: string;
-  cr: string;
-  traits: Array<{ name: string; desc: string }>;
-  actions: Array<{ name: string; desc: string }>;
-}
-
-const DEFAULT_BLOCK: StatBlock = {
-  name: "New Monster",
-  size: "Medium",
-  type: "humanoid",
-  alignment: "unaligned",
-  ac: 10,
-  hp: 10,
-  speed: "30 ft.",
-  stats: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
-  saves: "",
-  skills: "",
-  senses: "passive Perception 10",
-  languages: "Common",
-  cr: "1/4",
-  traits: [],
-  actions: [{ name: "Melee Attack", desc: "+4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage." }]
-};
+// Define StatBlock locally for legacy support (and if we want to keep it as a built-in type)
+// Or we can just rely on templates entirely.
+// For now, we'll switch between "Legacy (Hardcoded)" and "Custom Templates" modes.
 
 export const StatBlockDesignerTab: React.FC = () => {
   const projectRoot = useAtomValue(projectRootAtom);
-  const [block, setBlock] = useState<StatBlock>(DEFAULT_BLOCK);
+  
+  // Mode State: "designer" (filling out forms) or "editor" (creating templates)
+  const [mode, setMode] = useState<"designer" | "editor">("designer");
+  
+  // Template State
+  const [templates, setTemplates] = useState<TableTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(DEFAULT_TEMPLATE.id);
+  const [currentTemplate, setCurrentTemplate] = useState<TableTemplate>(DEFAULT_TEMPLATE);
+  
+  // Form Data
+  const [formData, setFormData] = useState<Record<string, any>>({});
   const [markdown, setMarkdown] = useState("");
-  const [showPreview, setShowPreview] = useState(false); // Disabled by default to prevent crash
+  const [showPreview, setShowPreview] = useState(false);
 
+  // Load templates on mount
   useEffect(() => {
-    // Generate YAML-like markdown block
-    const yamlStr = yaml.dump(block, { lineWidth: -1 });
-    setMarkdown(`\`\`\`statblock\n${yamlStr}\`\`\``);
-  }, [block]);
+    if (!projectRoot) return;
+    
+    const loadTemplates = async () => {
+        try {
+            const templatesDir = await join(projectRoot, ".codex", "templates");
+            // Ensure dir exists? Maybe not, just try to list
+            const files = await listFilesInDir(templatesDir);
+            
+            const loadedTemplates: TableTemplate[] = [];
+            
+            for (const file of files) {
+                if (file.endsWith(".json")) {
+                    try {
+                        const content = await readFile(await join(templatesDir, file));
+                        const parsed = JSON.parse(content);
+                        if (parsed.id && parsed.fields) {
+                            loadedTemplates.push(parsed);
+                        }
+                    } catch (e) {
+                        console.error(`Failed to parse template ${file}`, e);
+                    }
+                }
+            }
+            
+            setTemplates([DEFAULT_TEMPLATE, ...loadedTemplates]);
+        } catch (e) {
+            // Directory likely doesn't exist yet, just use default
+            setTemplates([DEFAULT_TEMPLATE]);
+        }
+    };
+    
+    loadTemplates();
+  }, [projectRoot, mode]); // Reload when switching back from editor mode
 
-  const handleChange = (field: keyof StatBlock, value: any) => {
-    setBlock(prev => ({ ...prev, [field]: value }));
-  };
+  // Update current template when selection changes
+  useEffect(() => {
+    const found = templates.find(t => t.id === selectedTemplateId) || DEFAULT_TEMPLATE;
+    setCurrentTemplate(found);
+    
+    // Reset form data to defaults
+    const initialData: Record<string, any> = {};
+    found.fields.forEach(f => {
+        initialData[f.key] = f.defaultValue ?? "";
+    });
+    setFormData(initialData);
+  }, [selectedTemplateId, templates]);
 
-  const handleStatChange = (stat: keyof StatBlock['stats'], value: number) => {
-    setBlock(prev => ({ ...prev, stats: { ...prev.stats, [stat]: value } }));
-  };
+  // Generate Markdown
+  useEffect(() => {
+    // We use a generic 'codex' block for custom templates
+    // For now, we can just dump yaml.
+    // If it's the legacy statblock, we might want to use specific logic, but let's try to make everything generic.
+    
+    const data = {
+        template: currentTemplate.id,
+        ...formData
+    };
+    
+    const yamlStr = yaml.dump(data, { lineWidth: -1 });
+    setMarkdown(`\`\`\`codex\n${yamlStr}\`\`\``);
+  }, [formData, currentTemplate]);
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(markdown);
-    alert("Copied to clipboard!");
+
+  const handleFieldChange = (key: string, value: any) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
   };
 
   const handleSave = async () => {
@@ -82,21 +106,32 @@ export const StatBlockDesignerTab: React.FC = () => {
       const statBlocksDir = await join(projectRoot, "StatBlocks");
       await createDirectory(statBlocksDir);
 
-      const safeName = block.name.replace(/[<>:"/\\|?*]/g, '-');
+      // Try to find a good name field
+      const nameVal = formData["name"] || "Untitled";
+      const safeName = String(nameVal).replace(/[<>:"/\\|?*]/g, '-');
       const fileName = `${safeName}.md`;
       const filePath = await join(statBlocksDir, fileName);
 
       await writeFile(filePath, markdown);
-      alert(`Saved ${block.name} to StatBlocks folder!`);
+      alert(`Saved ${nameVal} to StatBlocks folder!`);
     } catch (error) {
-      console.error("Failed to save stat block:", error);
-      alert("Failed to save stat block. Check console for details.");
+      console.error("Failed to save:", error);
+      alert("Failed to save. Check console for details.");
     }
   };
 
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(markdown);
+    alert("Copied to clipboard!");
+  };
+
+  if (mode === "editor") {
+      return <TemplateEditor onClose={() => setMode("designer")} />;
+  }
+
   return (
     <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
-      {/* Form */}
+      {/* Form Panel */}
       <div style={{ 
           flex: 1, 
           overflowY: "auto", 
@@ -105,8 +140,23 @@ export const StatBlockDesignerTab: React.FC = () => {
           color: vars.color.text.primary
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-          <h2 style={{ margin: 0 }}>Stat Block Designer</h2>
-          <div title={!projectRoot ? "Open a project to save stat blocks" : "Save to project"}>
+          <h2 style={{ margin: 0 }}>Designer</h2>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button 
+                onClick={() => setMode("editor")}
+                style={{ 
+                    background: "none", 
+                    border: `1px solid ${vars.color.border.subtle}`, 
+                    borderRadius: 4,
+                    padding: "6px 12px",
+                    color: vars.color.text.secondary, 
+                    cursor: "pointer",
+                    fontSize: 12
+                }}
+            >
+                Manage Templates
+            </button>
+            
             <button 
               onClick={handleSave}
               disabled={!projectRoot}
@@ -120,163 +170,44 @@ export const StatBlockDesignerTab: React.FC = () => {
                 cursor: !projectRoot ? "not-allowed" : "pointer",
                 opacity: !projectRoot ? 0.7 : 1
               }}
+              title={!projectRoot ? "Open a project first" : "Save to file"}
             >
-              Save to Project
+              Save
             </button>
           </div>
         </div>
-        
-        <div style={{ display: "grid", gap: 16, marginBottom: 24 }}>
-            <div>
-                <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Name</label>
-                <input className="input" value={block.name} onChange={e => handleChange("name", e.target.value)} />
-            </div>
-            <div style={{ display: "flex", gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                    <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Size</label>
-                    <select className="input" value={block.size} onChange={e => handleChange("size", e.target.value)}>
-                        {["Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"].map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
-                <div style={{ flex: 1 }}>
-                    <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Type</label>
-                    <input className="input" value={block.type} onChange={e => handleChange("type", e.target.value)} />
-                </div>
-                <div style={{ flex: 1 }}>
-                    <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Alignment</label>
-                    <input className="input" value={block.alignment} onChange={e => handleChange("alignment", e.target.value)} />
-                </div>
-            </div>
-            <div style={{ display: "flex", gap: 12 }}>
-                <div>
-                    <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>AC</label>
-                    <input className="input" type="number" style={{ width: 60 }} value={block.ac} onChange={e => handleChange("ac", Number(e.target.value))} />
-                </div>
-                <div>
-                    <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>HP</label>
-                    <input className="input" type="number" style={{ width: 60 }} value={block.hp} onChange={e => handleChange("hp", Number(e.target.value))} />
-                </div>
-                <div style={{ flex: 1 }}>
-                    <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Speed</label>
-                    <input className="input" value={block.speed} onChange={e => handleChange("speed", e.target.value)} />
-                </div>
-                <div>
-                    <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>CR</label>
-                    <input className="input" style={{ width: 60 }} value={block.cr} onChange={e => handleChange("cr", e.target.value)} />
-                </div>
-            </div>
 
-            <div>
-                <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Stats (STR / DEX / CON / INT / WIS / CHA)</label>
-                <div style={{ display: "flex", gap: 8 }}>
-                    {Object.entries(block.stats).map(([key, val]) => (
-                        <div key={key} style={{ textAlign: "center" }}>
-                            <div style={{ fontSize: 10, textTransform: "uppercase", marginBottom: 2 }}>{key}</div>
-                            <input 
-                                type="number" 
-                                value={val} 
-                                onChange={e => handleStatChange(key as any, Number(e.target.value))}
-                                style={{ width: 40, textAlign: "center" }}
-                                className="input"
-                            />
-                        </div>
-                    ))}
-                </div>
-            </div>
-            
-             <div>
-                <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Senses</label>
-                <input className="input" value={block.senses} onChange={e => handleChange("senses", e.target.value)} />
-            </div>
-            <div>
-                <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Languages</label>
-                <input className="input" value={block.languages} onChange={e => handleChange("languages", e.target.value)} />
-            </div>
-             <div>
-                <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Skills</label>
-                <input className="input" value={block.skills} onChange={e => handleChange("skills", e.target.value)} />
-            </div>
-        </div>
-
+        {/* Template Selector */}
         <div style={{ marginBottom: 24 }}>
-             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <h3 style={{ margin: 0, fontSize: 16 }}>Traits</h3>
-                <button 
-                    onClick={() => setBlock(prev => ({ ...prev, traits: [...prev.traits, { name: "New Trait", desc: "Description" }] }))}
-                    style={{ background: "none", border: "none", color: vars.color.accent.primary, cursor: "pointer", fontSize: 12 }}
-                >+ Add Trait</button>
-             </div>
-             {block.traits.map((t, i) => (
-                 <div key={i} style={{ marginBottom: 12, padding: 12, backgroundColor: vars.color.background.panelRaised, borderRadius: 4 }}>
-                     <input 
-                        className="input" 
-                        style={{ marginBottom: 4, fontWeight: "bold" }} 
-                        value={t.name} 
-                        onChange={e => {
-                            const newTraits = [...block.traits];
-                            newTraits[i].name = e.target.value;
-                            setBlock(prev => ({ ...prev, traits: newTraits }));
-                        }}
-                     />
-                     <textarea 
-                        className="input" 
-                        rows={2} 
-                        value={t.desc} 
-                        onChange={e => {
-                            const newTraits = [...block.traits];
-                            newTraits[i].desc = e.target.value;
-                            setBlock(prev => ({ ...prev, traits: newTraits }));
-                        }}
-                     />
-                     <button 
-                        onClick={() => setBlock(prev => ({ ...prev, traits: prev.traits.filter((_, idx) => idx !== i) }))}
-                        style={{ color: vars.color.state.danger, background: "none", border: "none", fontSize: 10, cursor: "pointer", marginTop: 4 }}
-                     >Remove</button>
-                 </div>
-             ))}
+            <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: vars.color.text.secondary }}>Template</label>
+            <select 
+                className="input" 
+                value={selectedTemplateId} 
+                onChange={e => setSelectedTemplateId(e.target.value)}
+                style={{ width: "100%", padding: 8, borderRadius: 4, border: `1px solid ${vars.color.border.subtle}`, background: vars.color.background.base, color: vars.color.text.primary }}
+            >
+                {templates.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+            </select>
+            <div style={{ fontSize: 11, color: vars.color.text.muted, marginTop: 4 }}>
+                {currentTemplate.description}
+            </div>
         </div>
 
-         <div style={{ marginBottom: 24 }}>
-             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <h3 style={{ margin: 0, fontSize: 16 }}>Actions</h3>
-                <button 
-                    onClick={() => setBlock(prev => ({ ...prev, actions: [...prev.actions, { name: "New Action", desc: "Description" }] }))}
-                    style={{ background: "none", border: "none", color: vars.color.accent.primary, cursor: "pointer", fontSize: 12 }}
-                >+ Add Action</button>
-             </div>
-             {block.actions.map((a, i) => (
-                 <div key={i} style={{ marginBottom: 12, padding: 12, backgroundColor: vars.color.background.panelRaised, borderRadius: 4 }}>
-                     <input 
-                        className="input" 
-                        style={{ marginBottom: 4, fontWeight: "bold" }} 
-                        value={a.name} 
-                        onChange={e => {
-                            const newActions = [...block.actions];
-                            newActions[i].name = e.target.value;
-                            setBlock(prev => ({ ...prev, actions: newActions }));
-                        }}
-                     />
-                     <textarea 
-                        className="input" 
-                        rows={2} 
-                        value={a.desc} 
-                        onChange={e => {
-                            const newActions = [...block.actions];
-                            newActions[i].desc = e.target.value;
-                            setBlock(prev => ({ ...prev, actions: newActions }));
-                        }}
-                     />
-                      <button 
-                        onClick={() => setBlock(prev => ({ ...prev, actions: prev.actions.filter((_, idx) => idx !== i) }))}
-                        style={{ color: vars.color.state.danger, background: "none", border: "none", fontSize: 10, cursor: "pointer", marginTop: 4 }}
-                     >Remove</button>
-                 </div>
-             ))}
+        {/* Dynamic Form */}
+        <div style={{ marginBottom: 24 }}>
+            <h3 style={{ fontSize: 14, borderBottom: `1px solid ${vars.color.border.subtle}`, paddingBottom: 8, marginBottom: 16 }}>Properties</h3>
+            <DynamicForm 
+                fields={currentTemplate.fields} 
+                values={formData} 
+                onChange={handleFieldChange} 
+            />
         </div>
 
       </div>
 
-      {/* Preview */}
+      {/* Preview Panel */}
       <div style={{ flex: 1, overflowY: "auto", padding: 24, backgroundColor: "#1a1a1a" }}>
           <h3 style={{ color: vars.color.text.secondary, marginTop: 0 }}>Preview</h3>
           
@@ -289,7 +220,6 @@ export const StatBlockDesignerTab: React.FC = () => {
                   />
                   <span style={{ color: vars.color.text.primary, fontWeight: 500 }}>Show Live Preview</span>
               </label>
-              {!showPreview && <p style={{ fontSize: 12, color: vars.color.text.muted, margin: "4px 0 0 24px" }}>Enable to see the rendered stat block. If app crashes, disable this.</p>}
           </div>
 
           {showPreview && (
@@ -325,22 +255,6 @@ export const StatBlockDesignerTab: React.FC = () => {
             Copy Code to Clipboard
           </button>
       </div>
-
-      {/* Styles for inputs */}
-      <style>{`
-        .input {
-            width: 100%;
-            padding: 8px;
-            border-radius: 4px;
-            border: 1px solid ${vars.color.border.subtle};
-            background-color: ${vars.color.background.base};
-            color: ${vars.color.text.primary};
-        }
-        .input:focus {
-            outline: none;
-            border-color: ${vars.color.accent.primary};
-        }
-      `}</style>
     </div>
   );
 };

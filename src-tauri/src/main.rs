@@ -16,6 +16,7 @@ fn main() {
       files::write_file,
       files::create_directory,
       files::copy_file,
+      files::list_files_in_dir,
       settings::save_settings,
       settings::load_settings,
       settings::save_api_key,
