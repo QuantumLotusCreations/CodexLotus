@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { DiffViewer } from "../diff/DiffViewer";
 import { MarkdownPreview } from "../../components/markdown/MarkdownPreview";
 import { activeFilePathAtom, projectRootAtom } from "../../state/atoms/projectAtoms";
 import { exportContentAtom } from "../../state/atoms/exportAtoms";
-import { useSetAtom } from "jotai";
 import { readFile, writeFile } from "../../../lib/api/files";
 import { useFileEdit } from "../../../lib/api/ai";
 import { vars } from "../../theme/tokens.css.ts";
+import { LayoutToolbar } from "./LayoutToolbar";
+import { StatBlockInserter } from "./StatBlockInserter";
 
 function joinProjectPath(projectRoot: string, relativePath: string): string {
   if (!projectRoot) return relativePath;
@@ -34,6 +35,9 @@ export const EditorWorkspace: React.FC = () => {
 
   // Preview State
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+
+  // Inserter State
+  const [showStatBlockInserter, setShowStatBlockInserter] = useState(false);
   
   const setExportContent = useSetAtom(exportContentAtom);
   useEffect(() => {
@@ -128,8 +132,30 @@ export const EditorWorkspace: React.FC = () => {
       setDiffOriginal(null);
   };
 
+  const editorRef = React.useRef<any>(null);
+
+  const handleInsertText = (text: string) => {
+      if (editorRef.current) {
+          const editor = editorRef.current;
+          const selection = editor.getSelection();
+          const id = { major: 1, minor: 1 };
+          const op = {range: selection, text: text, forceMoveMarkers: true};
+          editor.executeEdits("my-source", [op]);
+          editor.focus();
+      } else {
+         // Fallback if editor not mounted yet (rare)
+         setValue(prev => prev + text);
+      }
+  };
+
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      {showStatBlockInserter && (
+          <StatBlockInserter 
+            onInsert={(text) => handleInsertText("\n" + text + "\n")}
+            onClose={() => setShowStatBlockInserter(false)}
+          />
+      )}
       {/* Toolbar */}
       <div
         style={{
@@ -262,14 +288,23 @@ export const EditorWorkspace: React.FC = () => {
       )}
 
       {/* Editor / Diff / Preview View */}
-      <div style={{ flex: 1, overflow: "hidden" }}>
-        {diffModified && diffOriginal ? (
-            <DiffViewer original={diffOriginal} modified={diffModified} />
-        ) : isPreviewMode ? (
-            <MarkdownPreview content={value} />
-        ) : (
-            <MarkdownEditor value={value} onChange={setValue} />
+      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        {!isPreviewMode && !diffModified && (
+             <LayoutToolbar 
+                onInsert={handleInsertText} 
+                onInsertStatBlock={() => setShowStatBlockInserter(true)}
+             />
         )}
+        
+        <div style={{ flex: 1, overflow: "hidden" }}>
+             {diffModified && diffOriginal ? (
+                <DiffViewer original={diffOriginal} modified={diffModified} />
+             ) : isPreviewMode ? (
+                <MarkdownPreview content={value} />
+             ) : (
+                <MarkdownEditor value={value} onChange={setValue} editorRef={editorRef} />
+             )}
+        </div>
       </div>
     </div>
   );
