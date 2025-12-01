@@ -11,6 +11,11 @@ pub struct AppSettings {
   pub chat_model: String,
   pub embedding_model: String,
   pub theme_accent: Option<String>,
+  pub app_bg_color: Option<String>,
+  pub app_font_color: Option<String>,
+  pub foreground_panel_color: Option<String>,
+  pub input_bg_color: Option<String>,
+  pub input_font_color: Option<String>,
   pub statblock_bg_color: Option<String>,
   pub statblock_font_color: Option<String>,
 }
@@ -52,6 +57,11 @@ pub async fn load_settings(app: tauri::AppHandle) -> Result<AppSettings, Error> 
     chat_model: "gpt-4o-mini".to_string(),
     embedding_model: "text-embedding-3-small".to_string(),
     theme_accent: None,
+    app_bg_color: None,
+    app_font_color: None,
+    foreground_panel_color: None,
+    input_bg_color: None,
+    input_font_color: None,
     statblock_bg_color: Some("#fdf1dc".to_string()),
     statblock_font_color: Some("#58180D".to_string()),
   };

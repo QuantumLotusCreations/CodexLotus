@@ -24,6 +24,17 @@ stats:
   cha: 6
 \`\`\``;
 
+// Common styles to ensure inputs inherit the global theme override for inputs
+const inputBaseStyle = {
+    width: "100%",
+    padding: "8px",
+    borderRadius: 4,
+    border: `1px solid ${vars.color.border.subtle}`,
+    // We remove specific background/color here so the global CSS rule takes effect
+    // or we can explicitly use 'inherit' or 'initial' if needed, but typically removing works best
+    // if there are no other conflicting styles.
+};
+
 export const SettingsTab: React.FC = () => {
   const [apiKey, setApiKey] = useState("");
   const [hasKey, setHasKey] = useState(false);
@@ -60,6 +71,11 @@ export const SettingsTab: React.FC = () => {
                 chat_model: loaded.chat_model || "gpt-4o-mini",
                 embedding_model: "text-embedding-3-small",
                 theme_accent: loaded.theme_accent,
+                app_bg_color: loaded.app_bg_color,
+                app_font_color: loaded.app_font_color,
+                input_bg_color: loaded.input_bg_color,
+                input_font_color: loaded.input_font_color,
+                foreground_panel_color: loaded.foreground_panel_color,
                 statblock_bg_color: loaded.statblock_bg_color || "#fdf1dc",
                 statblock_font_color: loaded.statblock_font_color || "#58180D"
             });
@@ -137,14 +153,7 @@ export const SettingsTab: React.FC = () => {
             <select 
                 value={settings.provider}
                 onChange={(e) => setSettings(prev => ({ ...prev, provider: e.target.value }))}
-                style={{
-                    width: "100%",
-                    padding: "8px",
-                    borderRadius: 4,
-                    border: `1px solid ${vars.color.border.subtle}`,
-                    backgroundColor: vars.color.background.base,
-                    color: vars.color.text.primary
-                }}
+                style={inputBaseStyle}
             >
                 <option value="openai">OpenAI</option>
                 <option value="gemini">Google Gemini</option>
@@ -157,14 +166,7 @@ export const SettingsTab: React.FC = () => {
             <select 
                 value={settings.chat_model}
                 onChange={(e) => setSettings(prev => ({ ...prev, chat_model: e.target.value }))}
-                style={{
-                    width: "100%",
-                    padding: "8px",
-                    borderRadius: 4,
-                    border: `1px solid ${vars.color.border.subtle}`,
-                    backgroundColor: vars.color.background.base,
-                    color: vars.color.text.primary
-                }}
+                style={inputBaseStyle}
             >
                 {settings.provider === "openai" ? (
                     <>
@@ -216,8 +218,6 @@ export const SettingsTab: React.FC = () => {
                   padding: "8px 12px", 
                   borderRadius: 4, 
                   border: `1px solid ${vars.color.border.subtle}`,
-                  backgroundColor: vars.color.background.base,
-                  color: vars.color.text.primary
                 }}
               />
               <button
@@ -244,6 +244,164 @@ export const SettingsTab: React.FC = () => {
       </section>
 
       <section style={{ marginBottom: 32 }}>
+        <h3 style={{ color: vars.color.text.accent, marginBottom: 16 }}>App Styling</h3>
+        <div style={{ backgroundColor: vars.color.background.panelRaised, padding: 20, borderRadius: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                <div>
+                    <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: "block", marginBottom: 8, fontWeight: 500 }}>App Background Color</label>
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <input 
+                                type="color" 
+                                value={settings.app_bg_color || "#0B1C17"}
+                                onChange={(e) => setSettings(prev => ({ ...prev, app_bg_color: e.target.value }))}
+                                style={{ height: 38, width: 60, padding: 0, border: "none", cursor: "pointer" }}
+                            />
+                            <input 
+                                type="text"
+                                value={settings.app_bg_color || ""}
+                                placeholder="#0B1C17"
+                                onChange={(e) => setSettings(prev => ({ ...prev, app_bg_color: e.target.value }))}
+                                style={{ 
+                                    flex: 1,
+                                    ...inputBaseStyle
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: "block", marginBottom: 8, fontWeight: 500 }}>App Font Color</label>
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <input 
+                                type="color" 
+                                value={settings.app_font_color || "#FFFFFF"}
+                                onChange={(e) => setSettings(prev => ({ ...prev, app_font_color: e.target.value }))}
+                                style={{ height: 38, width: 60, padding: 0, border: "none", cursor: "pointer" }}
+                            />
+                            <input 
+                                type="text"
+                                value={settings.app_font_color || ""}
+                                placeholder="#FFFFFF"
+                                onChange={(e) => setSettings(prev => ({ ...prev, app_font_color: e.target.value }))}
+                                style={{ 
+                                    flex: 1,
+                                    ...inputBaseStyle
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: "block", marginBottom: 8, fontWeight: 500 }}>Foreground Panel Color</label>
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <input 
+                                type="color" 
+                                value={settings.foreground_panel_color || "#1E4638"}
+                                onChange={(e) => setSettings(prev => ({ ...prev, foreground_panel_color: e.target.value }))}
+                                style={{ height: 38, width: 60, padding: 0, border: "none", cursor: "pointer" }}
+                            />
+                            <input 
+                                type="text"
+                                value={settings.foreground_panel_color || ""}
+                                placeholder="#1E4638"
+                                onChange={(e) => setSettings(prev => ({ ...prev, foreground_panel_color: e.target.value }))}
+                                style={{ 
+                                    flex: 1,
+                                    ...inputBaseStyle
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: "block", marginBottom: 8, fontWeight: 500 }}>Highlight/Accent Color</label>
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <input 
+                                type="color" 
+                                value={settings.theme_accent || "#D6AA3D"}
+                                onChange={(e) => setSettings(prev => ({ ...prev, theme_accent: e.target.value }))}
+                                style={{ height: 38, width: 60, padding: 0, border: "none", cursor: "pointer" }}
+                            />
+                            <input 
+                                type="text"
+                                value={settings.theme_accent || ""}
+                                placeholder="#D6AA3D"
+                                onChange={(e) => setSettings(prev => ({ ...prev, theme_accent: e.target.value }))}
+                                style={{ 
+                                    flex: 1,
+                                    ...inputBaseStyle
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: "block", marginBottom: 8, fontWeight: 500 }}>Input Background Color</label>
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <input 
+                                type="color" 
+                                value={settings.input_bg_color || "#0B1C17"}
+                                onChange={(e) => setSettings(prev => ({ ...prev, input_bg_color: e.target.value }))}
+                                style={{ height: 38, width: 60, padding: 0, border: "none", cursor: "pointer" }}
+                            />
+                            <input 
+                                type="text"
+                                value={settings.input_bg_color || ""}
+                                placeholder="Default"
+                                onChange={(e) => setSettings(prev => ({ ...prev, input_bg_color: e.target.value }))}
+                                style={{ 
+                                    flex: 1,
+                                    ...inputBaseStyle
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: "block", marginBottom: 8, fontWeight: 500 }}>Input Font Color</label>
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <input 
+                                type="color" 
+                                value={settings.input_font_color || "#FFFFFF"}
+                                onChange={(e) => setSettings(prev => ({ ...prev, input_font_color: e.target.value }))}
+                                style={{ height: 38, width: 60, padding: 0, border: "none", cursor: "pointer" }}
+                            />
+                            <input 
+                                type="text"
+                                value={settings.input_font_color || ""}
+                                placeholder="Default"
+                                onChange={(e) => setSettings(prev => ({ ...prev, input_font_color: e.target.value }))}
+                                style={{ 
+                                    flex: 1,
+                                    ...inputBaseStyle
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setSettings(prev => ({ 
+                            ...prev, 
+                            app_bg_color: null, 
+                            app_font_color: null, 
+                            theme_accent: null, 
+                            input_bg_color: null, 
+                            input_font_color: null,
+                            foreground_panel_color: null
+                        }))}
+                        style={{
+                            padding: "6px 12px",
+                            borderRadius: 4,
+                            border: `1px solid ${vars.color.border.subtle}`,
+                            backgroundColor: "transparent",
+                            color: vars.color.text.secondary,
+                            fontSize: 12,
+                            cursor: "pointer"
+                        }}
+                    >
+                        Reset App Colors to Defaults
+                    </button>
+                </div>
+            </div>
+        </div>
+      </section>
+
+      <section style={{ marginBottom: 32 }}>
         <h3 style={{ color: vars.color.text.accent, marginBottom: 16 }}>Stat Block Customization</h3>
         <div style={{ backgroundColor: vars.color.background.panelRaised, padding: 20, borderRadius: 8 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
@@ -263,11 +421,7 @@ export const SettingsTab: React.FC = () => {
                                 onChange={(e) => setSettings(prev => ({ ...prev, statblock_bg_color: e.target.value }))}
                                 style={{ 
                                     flex: 1,
-                                    padding: "8px", 
-                                    borderRadius: 4, 
-                                    border: `1px solid ${vars.color.border.subtle}`,
-                                    backgroundColor: vars.color.background.base,
-                                    color: vars.color.text.primary
+                                    ...inputBaseStyle
                                 }}
                             />
                         </div>
@@ -287,11 +441,7 @@ export const SettingsTab: React.FC = () => {
                                 onChange={(e) => setSettings(prev => ({ ...prev, statblock_font_color: e.target.value }))}
                                 style={{ 
                                     flex: 1,
-                                    padding: "8px", 
-                                    borderRadius: 4, 
-                                    border: `1px solid ${vars.color.border.subtle}`,
-                                    backgroundColor: vars.color.background.base,
-                                    color: vars.color.text.primary
+                                    ...inputBaseStyle
                                 }}
                             />
                         </div>

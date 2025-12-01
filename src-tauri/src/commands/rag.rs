@@ -55,6 +55,11 @@ async fn get_client(
             chat_model: "gpt-4o-mini".to_string(),
             embedding_model: "text-embedding-3-small".to_string(),
             theme_accent: None,
+            app_bg_color: None,
+            app_font_color: None,
+            input_bg_color: None,
+            input_font_color: None,
+            foreground_panel_color: None,
             statblock_bg_color: None,
             statblock_font_color: None,
         });

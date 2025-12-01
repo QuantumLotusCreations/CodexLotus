@@ -55,7 +55,7 @@ export const appShell = {
   resizer: style({
     width: "4px",
     cursor: "col-resize",
-    backgroundColor: "transparent",
+    backgroundColor: vars.color.background.panel,
     transition: "background-color 0.2s",
     ":hover": {
       backgroundColor: vars.color.accent.primary,

@@ -24,6 +24,12 @@ globalStyle("#root", {
   minHeight: "100vh",
 });
 
+// --- Global Input Overrides ---
+globalStyle("input, select, textarea", {
+  backgroundColor: `var(--codexlotus-input-bg, ${vars.color.background.panel}) !important`,
+  color: `var(--codexlotus-input-text, ${vars.color.text.primary}) !important`,
+});
+
 // --- Custom Scrollbar Styles ---
 globalStyle("::-webkit-scrollbar", {
   width: "8px",
@@ -34,13 +40,14 @@ globalStyle("::-webkit-scrollbar-track", {
   backgroundColor: "transparent",
 });
 
+// Using border.strong which is mapped to accent color in themeUtils now when overriden
 globalStyle("::-webkit-scrollbar-thumb", {
-  backgroundColor: vars.color.border.strong,
+  backgroundColor: vars.color.border.strong, 
   borderRadius: vars.radius.sm,
 });
 
 globalStyle("::-webkit-scrollbar-thumb:hover", {
-  backgroundColor: vars.color.text.muted,
+  backgroundColor: vars.color.accent.primary, // Direct accent usage for hover
 });
 
 globalStyle("::-webkit-scrollbar-corner", {
