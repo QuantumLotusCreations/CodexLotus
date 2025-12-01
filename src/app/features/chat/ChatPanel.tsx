@@ -47,7 +47,7 @@ export const ChatPanel: React.FC = () => {
   }
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", backgroundColor: vars.color.background.panel }}>
+    <div style={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", backgroundColor: vars.color.background.panel }}>
       
       {/* Header / Indexing Status */}
       <div style={{ 

@@ -4,6 +4,7 @@ import { useSetAtom, useAtomValue } from "jotai";
 import { workspaceAtoms } from "../../state/atoms/workspaceAtoms";
 import { projectRootAtom } from "../../state/atoms/projectAtoms";
 import { isExportDialogOpenAtom } from "../../state/atoms/exportAtoms";
+import { layoutAtoms } from "../../state/atoms/layoutAtoms";
 import { useProjectActions } from "../../hooks/useProjectActions";
 import { 
     titleBarRoot, menuBar, menuItem, menuDropdown, menuDropdownItem,
@@ -14,6 +15,8 @@ export const TitleBar: React.FC = () => {
   const openSettings = useSetAtom(workspaceAtoms.openSettingsTabAtom);
   const openTool = useSetAtom(workspaceAtoms.openToolTabAtom);
   const openExport = useSetAtom(isExportDialogOpenAtom);
+  const swapSlots = useSetAtom(layoutAtoms.swapSlotsAtom);
+  const resetLayout = useSetAtom(layoutAtoms.setPanelRatiosAtom);
   const projectRoot = useAtomValue(projectRootAtom);
   const { handleSelectProject, handleCreateProject, handleImportFiles } = useProjectActions();
 
@@ -72,7 +75,28 @@ export const TitleBar: React.FC = () => {
         </div>
 
         <div className={menuItem} onClick={() => alert("Edit menu not implemented yet.")}>Edit</div>
-        <div className={menuItem} onClick={() => alert("View menu not implemented yet.")}>View</div>
+        
+        {/* View Menu */}
+        <div style={{ position: "relative" }}>
+            <div className={menuItem} onClick={() => toggleMenu("view")}>View</div>
+            {activeMenu === "view" && (
+                <div className={menuDropdown}>
+                    <div className={menuDropdownItem} onClick={() => { closeMenu(); swapSlots({ slotA: 'left', slotB: 'center' }); }}>
+                        Swap Left & Center Panel
+                    </div>
+                    <div className={menuDropdownItem} onClick={() => { closeMenu(); swapSlots({ slotA: 'center', slotB: 'right' }); }}>
+                        Swap Center & Right Panel
+                    </div>
+                    <div className={menuDropdownItem} onClick={() => { closeMenu(); swapSlots({ slotA: 'left', slotB: 'right' }); }}>
+                        Swap Left & Right Panel
+                    </div>
+                    <div style={{ height: 1, backgroundColor: "rgba(255,255,255,0.1)", margin: "4px 0" }} />
+                    <div className={menuDropdownItem} onClick={() => { closeMenu(); resetLayout({ left: 20, center: 60, right: 20 }); }}>
+                        Reset Layout Sizes
+                    </div>
+                </div>
+            )}
+        </div>
         
         {/* Tools Menu */}
         <div style={{ position: "relative" }}>

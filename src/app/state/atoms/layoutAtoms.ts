@@ -1,39 +1,90 @@
 import { atom } from "jotai";
 
+export type PanelId = 'explorer' | 'editor' | 'assistant';
+export type SlotId = 'left' | 'center' | 'right';
+
 export interface LayoutState {
-  isChatOpen: boolean;
-  chatWidth: number;
-  sidebarWidth: number;
+  isRightPanelOpen: boolean;
+  
+  // Ratios for the three panels (must sum to roughly 1.0, or use flex-grow logic)
+  // For simplicity, we track percentage ratios (e.g. 20, 60, 20)
+  panelRatios: {
+    left: number;
+    center: number;
+    right: number;
+  };
+
+  slots: {
+    left: PanelId;
+    center: PanelId;
+    right: PanelId;
+  };
 }
 
 const baseAtom = atom<LayoutState>({
-  isChatOpen: true,
-  chatWidth: 320,
-  sidebarWidth: 260,
+  isRightPanelOpen: true,
+  panelRatios: {
+    left: 20,
+    center: 60,
+    right: 20,
+  },
+  slots: {
+    left: 'explorer',
+    center: 'editor',
+    right: 'assistant',
+  },
 });
 
 const viewModelAtom = atom((get) => get(baseAtom));
 
-const toggleChatAtom = atom(null, (get, set) => {
+const toggleRightPanelAtom = atom(null, (get, set) => {
   const s = get(baseAtom);
-  set(baseAtom, { ...s, isChatOpen: !s.isChatOpen });
+  const isOpening = !s.isRightPanelOpen;
+  
+  let newRatios = { ...s.panelRatios };
+
+  if (isOpening) {
+    // Restore right panel, stealing space from center
+    newRatios.right = 20; // Default or last known? simplified to 20 for now
+    newRatios.center = Math.max(20, 100 - newRatios.left - newRatios.right);
+  } else {
+    // Close right panel, give space to center
+    newRatios.center = newRatios.center + newRatios.right;
+    newRatios.right = 0;
+  }
+
+  set(baseAtom, { 
+    ...s, 
+    isRightPanelOpen: isOpening,
+    panelRatios: newRatios
+  });
 });
 
-const setChatWidthAtom = atom(null, (get, set, width: number) => {
+const setPanelRatiosAtom = atom(null, (get, set, ratios: { left: number; center: number; right: number }) => {
   const s = get(baseAtom);
-  set(baseAtom, { ...s, chatWidth: width });
+  set(baseAtom, { ...s, panelRatios: ratios });
 });
 
-const setSidebarWidthAtom = atom(null, (get, set, width: number) => {
+
+const swapSlotsAtom = atom(null, (get, set, { slotA, slotB }: { slotA: SlotId; slotB: SlotId }) => {
   const s = get(baseAtom);
-  set(baseAtom, { ...s, sidebarWidth: width });
+  const contentA = s.slots[slotA];
+  const contentB = s.slots[slotB];
+  
+  set(baseAtom, {
+    ...s,
+    slots: {
+      ...s.slots,
+      [slotA]: contentB,
+      [slotB]: contentA,
+    }
+  });
 });
 
 export const layoutAtoms = {
   baseAtom,
   viewModelAtom,
-  toggleChatAtom,
-  setChatWidthAtom,
-  setSidebarWidthAtom,
+  toggleRightPanelAtom,
+  setPanelRatiosAtom,
+  swapSlotsAtom,
 };
-
