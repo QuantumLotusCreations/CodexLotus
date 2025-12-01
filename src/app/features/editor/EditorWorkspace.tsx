@@ -4,6 +4,8 @@ import { MarkdownEditor } from "./MarkdownEditor";
 import { DiffViewer } from "../diff/DiffViewer";
 import { MarkdownPreview } from "../../components/markdown/MarkdownPreview";
 import { activeFilePathAtom, projectRootAtom } from "../../state/atoms/projectAtoms";
+import { exportContentAtom } from "../../state/atoms/exportAtoms";
+import { useSetAtom } from "jotai";
 import { readFile, writeFile } from "../../../lib/api/files";
 import { useFileEdit } from "../../../lib/api/ai";
 import { vars } from "../../theme/tokens.css.ts";
@@ -33,6 +35,11 @@ export const EditorWorkspace: React.FC = () => {
   // Preview State
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   
+  const setExportContent = useSetAtom(exportContentAtom);
+  useEffect(() => {
+     setExportContent(value);
+  }, [value, setExportContent]);
+
   const { mutateAsync: requestEdit, isLoading: isAiThinking } = useFileEdit();
 
   useEffect(() => {

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { join } from "@tauri-apps/api/path";
 import yaml from "js-yaml";
 import { vars } from "../../theme/tokens.css";
 import { MarkdownPreview } from "../../components/markdown/MarkdownPreview";
 import { projectRootAtom } from "../../state/atoms/projectAtoms";
+import { exportContentAtom } from "../../state/atoms/exportAtoms";
 import { createDirectory, writeFile, listFilesInDir, readFile } from "../../../lib/api/files";
 import { TableTemplate, DEFAULT_TEMPLATE } from "../../../lib/templates/types";
 import { DynamicForm } from "../../components/forms/DynamicForm";
@@ -107,8 +108,14 @@ export const StatBlockDesignerTab: React.FC = () => {
     });
     
     const yamlStr = yaml.dump(finalData, { lineWidth: -1 });
-    setMarkdown(`\`\`\`codex\n${yamlStr}\`\`\``);
+    const newMarkdown = `\`\`\`codex\n${yamlStr}\`\`\``;
+    setMarkdown(newMarkdown);
   }, [formData, currentTemplate]);
+
+  const setExportContent = useSetAtom(exportContentAtom);
+  useEffect(() => {
+    setExportContent(markdown);
+  }, [markdown, setExportContent]);
 
 
   const handleFieldChange = (key: string, value: any) => {

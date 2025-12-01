@@ -70,6 +70,78 @@ globalStyle(".markdown-body pre", {
   overflowX: "auto",
 });
 
+// --- Layout Tools (New) ---
+// Two Column Layout
+globalStyle(".l-col2", {
+  columns: "2",
+  columnGap: "2rem",
+  width: "100%",
+});
+
+// Three Column Layout
+globalStyle(".l-col3", {
+  columns: "3",
+  columnGap: "2rem",
+  width: "100%",
+});
+
+// Page Break
+globalStyle(".l-pagebreak", {
+  pageBreakAfter: "always",
+  breakAfter: "page",
+  height: "1px",
+  margin: "2rem 0",
+  borderBottom: `1px dashed ${vars.color.border.subtle}`,
+  position: "relative",
+});
+
+globalStyle(".l-pagebreak::after", {
+  content: "'PAGE BREAK'",
+  position: "absolute",
+  right: 0,
+  top: "-10px",
+  fontSize: "10px",
+  color: vars.color.text.muted,
+  backgroundColor: vars.color.background.base,
+  paddingLeft: "4px",
+});
+
+// Sidebar / Aside Box
+globalStyle(".l-aside", {
+  backgroundColor: vars.color.background.panelRaised,
+  border: `1px solid ${vars.color.border.subtle}`,
+  padding: vars.spacing.md,
+  borderRadius: vars.radius.md,
+  margin: `${vars.spacing.md} 0`,
+  breakInside: "avoid", // Keep sidebars together when printing
+  pageBreakInside: "avoid",
+});
+
+// Avoid Break (Keep content together)
+globalStyle(".l-avoid", {
+  breakInside: "avoid",
+  pageBreakInside: "avoid",
+});
+
+// Center Content
+globalStyle(".l-center", {
+  textAlign: "center",
+  display: "block",
+  margin: "0 auto",
+});
+
+// --- Print Overrides ---
+globalStyle("@media print", {
+   ".l-pagebreak": {
+       border: "none", // Hide the visual dashed line
+       margin: 0,
+   },
+   ".l-pagebreak::after": {
+       display: "none", // Hide the label
+   }
+});
+
+
 // --- TTRPG Stat Block Styles ---
 globalStyle(".c-statblock", {
   backgroundColor: "#fdf1dc", // Parchment-like

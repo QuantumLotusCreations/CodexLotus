@@ -3,6 +3,7 @@ import { appWindow } from "@tauri-apps/api/window";
 import { useSetAtom, useAtomValue } from "jotai";
 import { workspaceAtoms } from "../../state/atoms/workspaceAtoms";
 import { projectRootAtom } from "../../state/atoms/projectAtoms";
+import { isExportDialogOpenAtom } from "../../state/atoms/exportAtoms";
 import { useProjectActions } from "../../hooks/useProjectActions";
 import { 
     titleBarRoot, menuBar, menuItem, menuDropdown, menuDropdownItem,
@@ -12,6 +13,7 @@ import {
 export const TitleBar: React.FC = () => {
   const openSettings = useSetAtom(workspaceAtoms.openSettingsTabAtom);
   const openTool = useSetAtom(workspaceAtoms.openToolTabAtom);
+  const openExport = useSetAtom(isExportDialogOpenAtom);
   const projectRoot = useAtomValue(projectRootAtom);
   const { handleSelectProject, handleCreateProject, handleImportFiles } = useProjectActions();
 
@@ -53,6 +55,9 @@ export const TitleBar: React.FC = () => {
                     </div>
                     <div className={menuDropdownItem} onClick={() => { closeMenu(); handleImportFiles(); }} style={{ opacity: projectRoot ? 1 : 0.5, pointerEvents: projectRoot ? "auto" : "none" }}>
                         Import Files...
+                    </div>
+                    <div className={menuDropdownItem} onClick={() => { closeMenu(); openExport(true); }}>
+                        Export...
                     </div>
                     <div style={{ height: 1, backgroundColor: "rgba(255,255,255,0.1)", margin: "4px 0" }} />
                     <div className={menuDropdownItem} onClick={() => { closeMenu(); openSettings(); }}>

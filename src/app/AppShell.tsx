@@ -43,6 +43,8 @@ function getComponentForTab(tab: WorkspaceTab): React.ComponentType | null {
   }
 }
 
+import { ExportDialog } from "./features/export/ExportDialog";
+
 export const AppShell: React.FC = () => {
   const { tabs, activeTabId } = useAtomValue(workspaceAtoms.viewModelAtom);
   const [{ isChatOpen, chatWidth, sidebarWidth }, setLayout] = useAtom(layoutAtoms.baseAtom);
@@ -136,6 +138,7 @@ export const AppShell: React.FC = () => {
 
   return (
     <div className={appShell.root}>
+      <ExportDialog />
       <TitleBar />
       <div className={appShell.workspaceRow}>
         <div style={{ width: sidebarWidth, display: 'flex', flexShrink: 0 }}>
