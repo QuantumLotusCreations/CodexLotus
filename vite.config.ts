@@ -6,7 +6,7 @@ import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 export default defineConfig(() => ({
   plugins: [react(), vanillaExtractPlugin()],
   build: {
-    target: ["es2021", "chrome100", "safari13"],
+    target: ["es2021", "chrome100", "safari14"],
   },
   server: {
     port: 5173,
