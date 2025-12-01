@@ -135,7 +135,7 @@ export const TitleBar: React.FC = () => {
             )}
         </div>
 
-        <div className={menuItem} onClick={() => alert("Help menu not implemented yet.")}>Help</div>
+        <div className={menuItem} onClick={() => openTool("help", "Documentation")}>Help</div>
       </div>
 
       {/* Window Controls & Settings */}

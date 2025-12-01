@@ -21,6 +21,7 @@ import { PlaytestSimulatorTab } from "./features/playtest/PlaytestSimulatorTab";
 import { getIndexStats, initializeProjectIndex } from "../lib/api/rag";
 import { call } from "../lib/api/client";
 import { ExportDialog } from "./features/export/ExportDialog";
+import { HelpTab } from "./features/help/HelpTab";
 
 function getComponentForTab(tab: WorkspaceTab): React.ComponentType | null {
   switch (tab.type) {
@@ -29,6 +30,7 @@ function getComponentForTab(tab: WorkspaceTab): React.ComponentType | null {
     case "settings":
       return SettingsTab;
     case "tool":
+      if (tab.payload?.toolId === "help") return HelpTab;
       if (tab.payload?.toolId === "dice-calculator") return DiceProbabilityTab;
       if (tab.payload?.toolId === "stat-block-designer") return StatBlockDesignerTab;
       if (tab.payload?.toolId === "lore-map") return LoreMapTab;
