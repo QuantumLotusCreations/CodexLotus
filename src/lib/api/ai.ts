@@ -1,9 +1,15 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { call } from "./client";
 
+export interface ChatMessage {
+  role: string;
+  content: string;
+}
+
 export interface ChatRequest {
   prompt: string;
   project_root?: string;
+  conversation?: ChatMessage[];
   provider?: string;
   model?: string;
 }
@@ -62,5 +68,7 @@ export function useIndexStats(projectRoot?: string | null) {
       return call<IndexStats>("get_index_stats", { projectRoot });
     },
     enabled: !!projectRoot,
+    staleTime: 0, // Always consider data stale so it refetches on invalidation
+    refetchOnMount: true,
   });
 }

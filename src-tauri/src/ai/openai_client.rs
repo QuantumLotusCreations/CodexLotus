@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-use super::llm_client::LlmClient;
+use super::llm_client::{LlmClient, Message};
 
 pub struct OpenAiClient {
   http: Client,
@@ -98,6 +98,41 @@ impl LlmClient for OpenAiClient {
         role: "user".to_string(),
         content: prompt.to_string(),
       }],
+    };
+
+    let resp: ChatCompletionResponse = self
+      .http
+      .post("https://api.openai.com/v1/chat/completions")
+      .bearer_auth(&self.api_key)
+      .json(&body)
+      .send()
+      .await?
+      .error_for_status()?
+      .json()
+      .await?;
+
+    let content = resp
+      .choices
+      .into_iter()
+      .next()
+      .map(|c| c.message.content)
+      .unwrap_or_default();
+
+    Ok(content)
+  }
+
+  async fn chat_completion_with_history(&self, messages: &[Message]) -> anyhow::Result<String> {
+    let chat_messages: Vec<ChatMessage> = messages
+      .iter()
+      .map(|m| ChatMessage {
+        role: m.role.clone(),
+        content: m.content.clone(),
+      })
+      .collect();
+
+    let body = ChatCompletionRequest {
+      model: self.chat_model.clone(),
+      messages: chat_messages,
     };
 
     let resp: ChatCompletionResponse = self

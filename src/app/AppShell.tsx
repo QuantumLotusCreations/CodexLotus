@@ -18,8 +18,7 @@ import { AutoTaggerTab } from "./features/autoTagger/AutoTaggerTab";
 import { ProceduralGeneratorTab } from "./features/procedural/ProceduralGeneratorTab";
 import { RuleCalculatorsTab } from "./features/ruleCalculators/RuleCalculatorsTab";
 import { PlaytestSimulatorTab } from "./features/playtest/PlaytestSimulatorTab";
-import { getIndexStats, initializeProjectIndex } from "../lib/api/rag";
-import { call } from "../lib/api/client";
+import { useAutoIndex } from "./hooks/useAutoIndex";
 import { ExportDialog } from "./features/export/ExportDialog";
 import { HelpTab } from "./features/help/HelpTab";
 
@@ -49,36 +48,18 @@ function getComponentForTab(tab: WorkspaceTab): React.ComponentType | null {
 export const AppShell: React.FC = () => {
   const { tabs, activeTabId } = useAtomValue(workspaceAtoms.viewModelAtom);
   const [layout, setLayout] = useAtom(layoutAtoms.baseAtom);
-  const projectRoot = useAtomValue(projectRootAtom);
+  const { triggerIndex, projectRoot } = useAutoIndex();
   
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const ActiveTabComponent = activeTab ? getComponentForTab(activeTab) : null;
 
-  // Auto-indexing Logic
+  // Auto-indexing on project load
   useEffect(() => {
-    if (!projectRoot) return;
-
-    const checkAndIndex = async () => {
-        try {
-            // 1. Check if indexed
-            const stats = await getIndexStats(projectRoot);
-            if (stats.is_indexed) return; // Already indexed
-
-            // 2. Check if we have a key
-            const hasKey = await call<boolean>("check_api_key");
-            if (!hasKey) return; // Can't index
-
-            // 3. Auto-index
-            console.log("Auto-indexing project...");
-            await initializeProjectIndex(projectRoot);
-            console.log("Auto-indexing complete.");
-        } catch (e) {
-            console.error("Auto-indexing failed:", e);
-        }
-    };
-
-    checkAndIndex();
-  }, [projectRoot]);
+    if (projectRoot) {
+      console.log("[AppShell] Project loaded, triggering index:", projectRoot);
+      triggerIndex(true); // Immediate index on project load
+    }
+  }, [projectRoot, triggerIndex]);
 
   const workspaceRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef<"left" | "right" | null>(null);

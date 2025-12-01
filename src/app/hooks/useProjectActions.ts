@@ -4,10 +4,12 @@ import { open } from "@tauri-apps/api/dialog";
 import { join, basename } from "@tauri-apps/api/path";
 import { projectRootAtom } from "../state/atoms/projectAtoms";
 import { createDirectory, writeFile, copyFile } from "../../lib/api/files";
+import { useAutoIndex } from "./useAutoIndex";
 
 export function useProjectActions() {
   const [projectRoot, setProjectRoot] = useAtom(projectRootAtom);
   const queryClient = useQueryClient();
+  const { triggerIndex } = useAutoIndex();
 
   const handleSelectProject = async () => {
     try {
@@ -89,6 +91,8 @@ export function useProjectActions() {
 
       if (importedCount > 0) {
         queryClient.invalidateQueries({ queryKey: ["project-files"] });
+        // Trigger re-indexing for newly imported markdown files
+        triggerIndex();
       }
     } catch (err) {
       console.error("Failed to import files:", err);

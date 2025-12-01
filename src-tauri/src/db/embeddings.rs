@@ -30,11 +30,12 @@ pub struct FileChunkInput {
 impl EmbeddingDb {
   pub fn open_for_project(project_root: &str) -> Result<Self> {
     let db_path = database_path_for_project(project_root);
+    println!("[DB] Opening database at: {:?}", db_path);
     if let Some(parent) = db_path.parent() {
       fs::create_dir_all(parent)?;
     }
 
-    let mut conn = Connection::open(db_path)?;
+    let mut conn = Connection::open(&db_path)?;
     migrations::run_migrations(&mut conn)?;
 
     Ok(Self { conn })
@@ -48,6 +49,7 @@ impl EmbeddingDb {
     project_root: &str,
     inputs: &[FileChunkInput],
   ) -> Result<()> {
+    println!("[DB] replace_project_embeddings for: {} ({} inputs)", project_root, inputs.len());
     let tx = self.conn.transaction()?;
 
     // Clear existing data for this project.
@@ -67,12 +69,14 @@ impl EmbeddingDb {
 
     for (chunk_index, input) in inputs.iter().enumerate() {
       let file_id = insert_file(&tx, project_root, &input.relative_path)?;
+      println!("[DB] Inserted file {} with id {}", input.relative_path, file_id);
 
       tx.execute(
         "INSERT INTO chunks (file_id, chunk_index, content) VALUES (?1, ?2, ?3)",
         params![file_id, chunk_index as i64, input.content],
       )?;
       let chunk_id = tx.last_insert_rowid();
+      println!("[DB] Inserted chunk with id {}", chunk_id);
 
       let vector_json = serde_json::to_string(&input.embedding)?;
       tx.execute(
@@ -91,7 +95,17 @@ impl EmbeddingDb {
       );
     }
 
+    println!("[DB] Committing transaction...");
     tx.commit()?;
+    
+    // Verify the data was stored
+    let verify_count: i64 = self.conn.query_row(
+      "SELECT COUNT(*) FROM chunks",
+      [],
+      |row| row.get(0)
+    )?;
+    println!("[DB] After commit, total chunks in DB: {}", verify_count);
+    
     Ok(())
   }
 
@@ -110,10 +124,10 @@ impl EmbeddingDb {
     }
 
     let mut stmt = self.conn.prepare(
-      "SELECT f.relative_path, c.content, e.vector_json\
-       FROM files f\
-       JOIN chunks c ON c.file_id = f.id\
-       JOIN embeddings e ON e.chunk_id = c.id\
+      "SELECT f.relative_path, c.content, e.vector_json \
+       FROM files f \
+       JOIN chunks c ON c.file_id = f.id \
+       JOIN embeddings e ON e.chunk_id = c.id \
        WHERE f.project_root = ?1",
     )?;
 
@@ -148,13 +162,29 @@ impl EmbeddingDb {
   }
 
   pub fn get_chunk_count(&self, project_root: &str) -> Result<usize> {
+    println!("[DB] get_chunk_count for: {}", project_root);
+    
+    // Debug: show all project roots in the database
+    let mut all_roots = self.conn.prepare("SELECT DISTINCT project_root FROM files")?;
+    let roots: Vec<String> = all_roots
+      .query_map([], |row| row.get(0))?
+      .filter_map(|r| r.ok())
+      .collect();
+    println!("[DB] All project roots in DB: {:?}", roots);
+    
+    // Debug: total files and chunks
+    let total_files: i64 = self.conn.query_row("SELECT COUNT(*) FROM files", [], |row| row.get(0))?;
+    let total_chunks: i64 = self.conn.query_row("SELECT COUNT(*) FROM chunks", [], |row| row.get(0))?;
+    println!("[DB] Total files: {}, Total chunks: {}", total_files, total_chunks);
+    
     let mut stmt = self.conn.prepare(
-      "SELECT COUNT(*)\
-       FROM files f\
-       JOIN chunks c ON c.file_id = f.id\
+      "SELECT COUNT(*) \
+       FROM files f \
+       JOIN chunks c ON c.file_id = f.id \
        WHERE f.project_root = ?1",
     )?;
     let count: i64 = stmt.query_row(params![project_root], |row| row.get(0))?;
+    println!("[DB] Found {} chunks for project_root: {}", count, project_root);
     Ok(count as usize)
   }
 }

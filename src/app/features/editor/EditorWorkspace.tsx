@@ -7,7 +7,8 @@ import { activeFilePathAtom, projectRootAtom } from "../../state/atoms/projectAt
 import { exportContentAtom } from "../../state/atoms/exportAtoms";
 import { readFile, writeFile } from "../../../lib/api/files";
 import { useFileEdit } from "../../../lib/api/ai";
-import { vars } from "../../theme/tokens.css.ts";
+import { useAutoIndex } from "../../hooks/useAutoIndex";
+import { vars } from "../../theme/tokens.css";
 import { LayoutToolbar } from "./LayoutToolbar";
 import { StatBlockInserter } from "./StatBlockInserter";
 
@@ -44,7 +45,8 @@ export const EditorWorkspace: React.FC = () => {
      setExportContent(value);
   }, [value, setExportContent]);
 
-  const { mutateAsync: requestEdit, isLoading: isAiThinking } = useFileEdit();
+  const { mutateAsync: requestEdit, isPending: isAiThinking } = useFileEdit();
+  const { triggerIndex } = useAutoIndex();
 
   useEffect(() => {
     if (!projectRoot || !activePath) {
@@ -93,6 +95,8 @@ export const EditorWorkspace: React.FC = () => {
     setError(null);
     try {
       await writeFile(fullPath, value);
+      // Trigger re-indexing (debounced) after save
+      triggerIndex();
     } catch (err) {
       console.error("Failed to save file", err);
       setError("Failed to save file.");

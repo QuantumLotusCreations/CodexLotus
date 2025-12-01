@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-use super::llm_client::LlmClient;
+use super::llm_client::{LlmClient, Message};
 
 pub struct GeminiClient {
   http: Client,
@@ -68,14 +68,10 @@ struct GeminiBatchEmbedRequest {
     requests: Vec<GeminiEmbedRequest>,
 }
 
-#[derive(Deserialize)]
-struct GeminiEmbeddingValues {
-    values: Vec<f32>,
-}
-
+// Response structure: { "embeddings": [{ "values": [...] }, ...] }
 #[derive(Deserialize)]
 struct GeminiEmbedResponse {
-    embedding: Option<GeminiEmbeddingValues>,
+    values: Vec<f32>,
 }
 
 #[derive(Deserialize)]
@@ -108,27 +104,29 @@ impl LlmClient for GeminiClient {
 
     let body = GeminiBatchEmbedRequest { requests };
 
-    let resp: GeminiBatchEmbedResponse = self
+    let response = self
       .http
       .post(&url)
       .json(&body)
       .send()
       .await?
-      .error_for_status()?
-      .json()
-      .await?;
+      .error_for_status()?;
+    
+    // Debug: print raw response
+    let response_text = response.text().await?;
+    println!("[Gemini Embed] Raw response (first 500 chars): {}", &response_text[..response_text.len().min(500)]);
+    
+    let resp: GeminiBatchEmbedResponse = serde_json::from_str(&response_text)?;
 
     let mut results = Vec::new();
     if let Some(embeddings) = resp.embeddings {
-        for e in embeddings {
-            if let Some(vals) = e.embedding {
-                results.push(vals.values);
-            } else {
-                // If one fails, we push an empty vec or handle error? 
-                // Let's push empty to maintain index alignment
-                results.push(Vec::new());
-            }
+        println!("[Gemini Embed] Got {} embedding responses", embeddings.len());
+        for (i, e) in embeddings.iter().enumerate() {
+            println!("[Gemini Embed] Embedding {} has {} values", i, e.values.len());
+            results.push(e.values.clone());
         }
+    } else {
+        println!("[Gemini Embed] No embeddings field in response!");
     }
 
     Ok(results)
@@ -148,6 +146,51 @@ impl LlmClient for GeminiClient {
             }],
         }],
     };
+
+    let resp: GeminiGenerateResponse = self
+      .http
+      .post(&url)
+      .json(&body)
+      .send()
+      .await?
+      .error_for_status()?
+      .json()
+      .await?;
+
+    let content = resp
+        .candidates
+        .and_then(|c| c.into_iter().next())
+        .and_then(|c| c.content)
+        .and_then(|c| c.parts)
+        .and_then(|parts| parts.into_iter().next())
+        .and_then(|p| p.text)
+        .unwrap_or_default();
+
+    Ok(content)
+  }
+
+  async fn chat_completion_with_history(&self, messages: &[Message]) -> anyhow::Result<String> {
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
+        self.model, self.api_key
+    );
+
+    // Convert messages to Gemini format
+    // Note: Gemini uses "user" and "model" roles (not "assistant")
+    let contents: Vec<GeminiContent> = messages
+        .iter()
+        .map(|m| {
+            let role = if m.role == "assistant" { "model".to_string() } else { m.role.clone() };
+            GeminiContent {
+                role,
+                parts: vec![GeminiContentPart {
+                    text: m.content.clone(),
+                }],
+            }
+        })
+        .collect();
+
+    let body = GeminiGenerateRequest { contents };
 
     let resp: GeminiGenerateResponse = self
       .http

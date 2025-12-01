@@ -5,13 +5,54 @@ use crate::ai::{
     openai_client::OpenAiClient,
 };
 use crate::commands::settings::{get_api_key_sync, AppSettings};
-use crate::db::embeddings::EmbeddingDb;
+use crate::db::embeddings::{EmbeddingDb, ScoredChunk};
 use crate::util::error::Error;
+
+/// Extract a mentioned file name from the user prompt.
+/// Looks for patterns like `filename.md`, backtick-quoted files, or common phrasing.
+fn extract_mentioned_file(prompt: &str) -> Option<String> {
+    // Pattern 1: Backtick-quoted file names like `README.md`
+    if let Some(start) = prompt.find('`') {
+        if let Some(end) = prompt[start + 1..].find('`') {
+            let potential = &prompt[start + 1..start + 1 + end];
+            if looks_like_filename(potential) {
+                return Some(potential.to_string());
+            }
+        }
+    }
+
+    // Pattern 2: Look for common file extensions mentioned directly
+    let extensions = [".md", ".markdown", ".txt", ".yaml", ".yml", ".json"];
+    for word in prompt.split_whitespace() {
+        let clean = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '.' && c != '_' && c != '-' && c != '/');
+        for ext in &extensions {
+            if clean.to_lowercase().ends_with(ext) && clean.len() > ext.len() {
+                return Some(clean.to_string());
+            }
+        }
+    }
+
+    None
+}
+
+fn looks_like_filename(s: &str) -> bool {
+    let s_lower = s.to_lowercase();
+    let extensions = [".md", ".markdown", ".txt", ".yaml", ".yml", ".json", ".toml"];
+    extensions.iter().any(|ext| s_lower.ends_with(ext)) && s.len() > 3 && !s.contains(' ')
+}
+
+#[derive(Deserialize, Clone)]
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
+}
 
 #[derive(Deserialize)]
 pub struct ChatRequest {
     pub prompt: String,
     pub project_root: Option<String>,
+    /// Full conversation history for multi-turn chat
+    pub conversation: Option<Vec<ChatMessage>>,
     // Optional: allow overriding model for this request
     pub provider: Option<String>,
     pub model: Option<String>,
@@ -81,19 +122,38 @@ pub async fn ai_chat_completion(
 
     let client = get_client(&settings, api_key.clone()).await;
 
-    // 1. Embed User Query (Only if supported)
+    // 1. Embed User Query and search for relevant context
     let mut context_chunks = Vec::new();
 
     if let Some(root) = &req.project_root {
-        // HACK: If provider is Gemini, we skip embeddings for now as it's not implemented.
-        if settings.provider == "openai" {
-            if let Ok(query_vecs) = client.embed(&[req.prompt.clone()]).await {
-                if let Some(query_vec) = query_vecs.first() {
-                    // 2. Search DB
-                    if let Ok(db) = EmbeddingDb::open_for_project(root) {
-                        if let Ok(hits) = db.query_similar_chunks(root, query_vec, 5) {
-                            context_chunks = hits;
-                        }
+        // Try to get embeddings and search - works for both OpenAI and Gemini
+        if let Ok(query_vecs) = client.embed(&[req.prompt.clone()]).await {
+            if let Some(query_vec) = query_vecs.first() {
+                // Search DB for similar chunks
+                if let Ok(db) = EmbeddingDb::open_for_project(root) {
+                    if let Ok(hits) = db.query_similar_chunks(root, query_vec, 5) {
+                        context_chunks = hits;
+                    }
+                }
+            }
+        }
+
+        // Additionally, detect if user mentions a specific file and load it directly
+        let mentioned_file = extract_mentioned_file(&req.prompt);
+        if let Some(file_name) = mentioned_file {
+            let file_path = std::path::Path::new(root).join(&file_name);
+            if file_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&file_path) {
+                    // Check if this file is already in context_chunks
+                    let already_included = context_chunks.iter().any(|c| {
+                        c.relative_path.to_lowercase() == file_name.to_lowercase()
+                    });
+                    if !already_included {
+                        context_chunks.insert(0, ScoredChunk {
+                            relative_path: file_name,
+                            content,
+                            score: 1.0, // Exact match gets highest score
+                        });
                     }
                 }
             }
@@ -120,10 +180,52 @@ pub async fn ai_chat_completion(
         .with_context(context_chunks)
         .with_templates(templates);
     
-    let prompt = context_builder.build_prompt(&req.prompt);
+    let system_context = context_builder.build_system_context();
+    let _user_prompt_with_context = context_builder.build_prompt(&req.prompt);
 
-    // 5. Send to LLM
-    let content = match client.chat_completion(&prompt).await {
+    // 5. Build messages array with conversation history
+    let mut messages: Vec<crate::ai::llm_client::Message> = Vec::new();
+    
+    // Add system context as first message if we have any
+    if !system_context.is_empty() {
+        messages.push(crate::ai::llm_client::Message {
+            role: "user".to_string(),
+            content: format!("[CONTEXT]\n{}\n[/CONTEXT]\n\nPlease use the above context to help answer my questions. Acknowledge this context briefly.", system_context),
+        });
+        messages.push(crate::ai::llm_client::Message {
+            role: "assistant".to_string(),
+            content: "I've reviewed the project context and files you provided. I'm ready to help you with questions about your project.".to_string(),
+        });
+    }
+
+    // Add conversation history if provided
+    if let Some(history) = &req.conversation {
+        for msg in history {
+            // Skip adding the last user message since we'll add it with context
+            if msg.role != "system" {
+                messages.push(crate::ai::llm_client::Message {
+                    role: msg.role.clone(),
+                    content: msg.content.clone(),
+                });
+            }
+        }
+    }
+    
+    // Add the current user message (already last in conversation, but ensure it's there)
+    // Only if not already added via conversation history
+    let already_has_current = req.conversation.as_ref()
+        .map(|c| c.last().map(|m| m.content == req.prompt && m.role == "user").unwrap_or(false))
+        .unwrap_or(false);
+    
+    if !already_has_current {
+        messages.push(crate::ai::llm_client::Message {
+            role: "user".to_string(),
+            content: req.prompt.clone(),
+        });
+    }
+
+    // 6. Send to LLM with full conversation
+    let content = match client.chat_completion_with_history(&messages).await {
         Ok(c) => c,
         Err(err) => format!("AI error: {err}"),
     };
