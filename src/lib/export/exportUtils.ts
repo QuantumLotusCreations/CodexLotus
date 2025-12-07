@@ -38,6 +38,8 @@ async function generateHtmlDocument(content: string, options: ExportOptions): Pr
   const bodyHtml = String(file);
 
   const styles = getAllStyles();
+  const rootStyles = document.documentElement.getAttribute("style") || "";
+  const rootClass = document.documentElement.className || "";
 
   // Custom Theme Overrides
   let customStyle = "";
@@ -60,10 +62,57 @@ async function generateHtmlDocument(content: string, options: ExportOptions): Pr
         .c-statblock { background-color: ${background} !important; border-color: ${accent} !important; color: ${text} !important; }
         .c-statblock__name, .c-statblock__section-header { color: ${accent} !important; }
       `;
+  } else if (options.theme === "screen") {
+      // Capture current computed styles to ensure they persist in print
+      const computedBody = window.getComputedStyle(document.body);
+      let bg = computedBody.backgroundColor;
+      const color = computedBody.color;
+      
+      // Fallback if background is transparent
+      if (bg === "rgba(0, 0, 0, 0)" || bg === "transparent") {
+          const computedRoot = window.getComputedStyle(document.documentElement);
+          bg = computedRoot.backgroundColor;
+      }
+      
+      customStyle = `
+        /* Force background on everything possible */
+        html, body {
+            background-color: ${bg} !important;
+            color: ${color} !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        /* Ensure markdown body also inherits */
+        .markdown-body { 
+            background-color: ${bg} !important; 
+            color: ${color} !important; 
+        }
+
+        /* Specific fix for code blocks you mentioned were working - ensuring they don't conflict */
+        pre, code, .c-statblock {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        @media print {
+            html, body {
+                background-color: ${bg} !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            /* Attempt to color the page canvas itself */
+            @page {
+                margin: 0; /* Removing margin sometimes helps cover the white */
+                background-color: ${bg} !important; 
+            }
+        }
+      `;
   }
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="${rootClass}" style="${rootStyles}">
 <head>
     <meta charset="UTF-8">
     <title>Codex Export</title>
@@ -89,7 +138,7 @@ async function generateHtmlDocument(content: string, options: ExportOptions): Pr
     </style>
 </head>
 <body class="markdown-body">
-    ${bodyHtml}
+${bodyHtml}
 </body>
 </html>`;
 }
@@ -113,21 +162,46 @@ export async function handleExport(content: string, options: ExportOptions) {
         throw e;
     }
   } else if (options.format === "pdf") {
-    // Print window strategy
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
-    if (printWindow) {
-        printWindow.document.write(html);
-        printWindow.document.close();
+    // Hidden Iframe Strategy (Better for Electron/Tauri)
+    // Create an iframe to hold the content
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.top = '0';
+    iframe.style.left = '0';
+    iframe.style.width = '0'; // Hide it visually but keep it in DOM
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    
+    document.body.appendChild(iframe);
+    
+    const doc = iframe.contentWindow?.document;
+    if (doc) {
+        doc.open();
+        doc.write(html);
+        doc.close();
         
-        // Wait for resources to load then print
-        printWindow.onload = () => {
-            printWindow.focus();
-            printWindow.print();
-            // Optional: printWindow.close(); // Don't auto close so user can see result if print fails
+        // Wait for load
+        iframe.onload = () => {
+            setTimeout(() => {
+                if (iframe.contentWindow) {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                    
+                    // Remove iframe after print dialog closes (or after delay)
+                    // Since we can't reliably detect print close, we leave it or remove after long delay.
+                    // However, removing it too early breaks printing in some browsers.
+                    // A safe bet is to remove it on next export or after a long timeout.
+                    setTimeout(() => {
+                        if (document.body.contains(iframe)) {
+                            document.body.removeChild(iframe);
+                        }
+                    }, 60000 * 5); // 5 minutes cleanup
+                }
+            }, 500);
         };
         return true;
     } else {
-        throw new Error("Could not open print window. Please check popup blockers.");
+        throw new Error("Could not create print frame.");
     }
   }
   return false;
