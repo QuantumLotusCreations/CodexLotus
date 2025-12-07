@@ -102,10 +102,33 @@ async function generateHtmlDocument(content: string, options: ExportOptions): Pr
                 print-color-adjust: exact !important;
             }
             
-            /* Attempt to color the page canvas itself */
+            /* Use margins on @page to ensure every page has spacing */
             @page {
-                margin: 0; /* Removing margin sometimes helps cover the white */
+                margin-top: 3cm;
+                margin-bottom: 3cm;
+                margin-left: 2cm;
+                margin-right: 2cm;
                 background-color: ${bg} !important; 
+            }
+
+            html, body {
+                background-color: ${bg} !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            /* Hack: Use a fixed background element to cover the white page margins */
+            #print-background {
+                display: block !important;
+                position: fixed;
+                top: -10cm;
+                left: -10cm;
+                width: 200vw;
+                height: 200vh;
+                background-color: ${bg} !important;
+                z-index: -9999;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
         }
       `;
@@ -121,8 +144,9 @@ async function generateHtmlDocument(content: string, options: ExportOptions): Pr
       
       /* Print Specific Fixes */
       @media print {
-          @page { margin: 2cm; }
+          @page { margin: 2.5cm 2cm; } /* Default margins */
           body { -webkit-print-color-adjust: exact; }
+          #print-background { display: none; }
       }
       
       /* Export Container Overrides */
@@ -138,7 +162,8 @@ async function generateHtmlDocument(content: string, options: ExportOptions): Pr
     </style>
 </head>
 <body class="markdown-body">
-${bodyHtml}
+    <div id="print-background"></div>
+    ${bodyHtml}
 </body>
 </html>`;
 }
