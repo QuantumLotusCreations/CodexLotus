@@ -169,6 +169,23 @@ async function generateHtmlDocument(content: string, options: ExportOptions): Pr
 }
 
 export async function handleExport(content: string, options: ExportOptions) {
+  if (options.format === "markdown") {
+    try {
+        const filePath = await save({
+            filters: [{ name: 'Markdown', extensions: ['md', 'markdown'] }]
+        });
+        
+        if (filePath) {
+            await writeTextFile(filePath, content);
+            return true;
+        }
+    } catch (e) {
+        console.error("Failed to save Markdown", e);
+        throw e;
+    }
+    return false;
+  }
+
   const html = await generateHtmlDocument(content, options);
 
   if (options.format === "html") {

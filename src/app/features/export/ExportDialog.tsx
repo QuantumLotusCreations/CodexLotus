@@ -101,12 +101,19 @@ export const ExportDialog: React.FC = () => {
                 setProgress(percentage);
                 setStatusMessage(`Loaded ${loadedCount}/${total}: ${path}`);
                 
+                // Add filename header if Markdown format
+                if (options.format === "markdown") {
+                    const filename = path.split(/[/\\]/).pop() || path;
+                    return `# ${filename}\n\n${fileContent}`;
+                }
+
                 return fileContent;
             }));
             
             setStatusMessage("Combining files...");
             // Join with page breaks
-            contentToExport = contents.join("\n\n<div class=\"l-pagebreak\"></div>\n\n");
+            const separator = options.format === "markdown" ? "\n\n" : "\n\n<div class=\"l-pagebreak\"></div>\n\n";
+            contentToExport = contents.join(separator);
         }
 
         setProgress(90);
@@ -190,10 +197,19 @@ export const ExportDialog: React.FC = () => {
                                     onChange={() => setOptions(prev => ({ ...prev, format: "html" }))}
                                 /> HTML File
                             </label>
+                            <label>
+                                <input 
+                                    type="radio" 
+                                    checked={options.format === "markdown"} 
+                                    onChange={() => setOptions(prev => ({ ...prev, format: "markdown" }))}
+                                /> Markdown
+                            </label>
                         </div>
                     </div>
 
                     {/* Theme Selection */}
+                    {options.format !== "markdown" && (
+                    <>
                     <div style={{ marginBottom: 16 }}>
                         <label style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}>Theme</label>
                         <select 
@@ -240,6 +256,8 @@ export const ExportDialog: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+                    )}
+                    </>
                     )}
                 </div>
 
@@ -389,7 +407,11 @@ export const ExportDialog: React.FC = () => {
                         opacity: isExporting ? 0.7 : 1
                     }}
                 >
-                    {isExporting ? "Exporting..." : (options.format === "pdf" ? "Print / Save PDF" : "Save HTML")}
+                    {isExporting ? "Exporting..." : (
+                        options.format === "pdf" ? "Print / Save PDF" : 
+                        options.format === "markdown" ? "Save Markdown" :
+                        "Save HTML"
+                    )}
                 </button>
             </div>
         </div>

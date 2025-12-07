@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 
 export interface ExportOptions {
-  format: "html" | "pdf";
+  format: "html" | "pdf" | "markdown";
   theme: "screen" | "print" | "custom";
   customColors?: {
     background: string;
